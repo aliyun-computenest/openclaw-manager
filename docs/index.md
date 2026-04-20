@@ -352,6 +352,7 @@ OAuth 配置页面用于查看当前 Supabase 实例已启用的第三方 OAuth 
      例如：`https://abc123.supabase.co/auth/v1/callback`
 4. 创建完成后，记录 **AppId**（即 Client ID）
 5. 在应用详情页创建 **AppSecret**（即 Client Secret），**请立即保存，Secret 只显示一次**
+6. 在创建的应用中，**添加 OAuth 范围**，添加**aliuid** 和**profile**
 
 > **回调地址的格式说明：** 所有 OAuth 提供商的回调地址都统一填写 `https://<你的Supabase项目URL>/auth/v1/callback`。Supabase 会自动处理不同提供商的回调路由，你不需要针对不同提供商设置不同的回调地址。
 
@@ -363,6 +364,7 @@ OAuth 配置页面用于查看当前 Supabase 实例已启用的第三方 OAuth 
 4. 开启 **Enable** 开关
 5. 填入第一步获得的 **Client ID (AppId)** 和 **Client Secret (AppSecret)**
 6. 点击 **Save** 保存
+7. 修改Site URL，找到 **URL Configuration**，将Site URL 修改为Openclaw Manager 的访问地址
 
 **第三步：在 OpenClaw Manager 中验证**
 
