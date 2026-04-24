@@ -1,0 +1,78 @@
+apiVersion: agents.kruise.io/v1alpha1
+kind: SandboxSet
+metadata:
+  name: openclaw
+  namespace: default
+spec:
+  persistentContents:
+    - filesystem
+  replicas: 1
+  runtimes:
+    - name: agent-runtime
+  template:
+    metadata:
+      labels:
+        app: openclaw
+        alibabacloud.com/acs: "true"
+      annotations:
+        image.alibabacloud.com/enable-image-cache: "true"
+        network.alibabacloud.com/network-policy-mode: "traffic-policy"
+        network.alibabacloud.com/enable-network-policy-agent: "true"
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      shareProcessNamespace: false
+      hostname: openclaw
+      containers:
+        - name: openclaw
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest-test/openclaw-channels:1.0.3
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["supervisord", "-n"]
+          ports:
+            - name: gateway
+              containerPort: 18789
+              protocol: TCP
+            - name: runtime
+              containerPort: 49983
+              protocol: TCP
+          env:
+            - name: OPENCLAW_CONFIG_DIR
+              value: /home/node/.openclaw/openclaw.json
+            - name: KUBERNETES_SERVICE_PORT_HTTPS
+              value: ""
+            - name: KUBERNETES_SERVICE_PORT
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_PROTO
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_ADDR
+              value: ""
+            - name: KUBERNETES_SERVICE_HOST
+              value: ""
+            - name: KUBERNETES_PORT
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_PORT
+              value: ""
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+          startupProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 150
