@@ -10,7 +10,7 @@ RUN apt update && \
     rm -rf /var/cache/apt/*
 
 # Append openclaw supervisor program config
-COPY supervisord.conf /tmp/supervisord.conf
+COPY agent-docker/openclaw/supervisord.conf /tmp/supervisord.conf
 RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
