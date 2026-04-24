@@ -10,7 +10,7 @@ RUN apt update && \
     rm -rf /var/cache/apt/*
 
 # Append hermes supervisor program config
-COPY supervisord.conf /tmp/supervisord.conf
+COPY agent-docker/hermes/supervisord.conf /tmp/supervisord.conf
 RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
