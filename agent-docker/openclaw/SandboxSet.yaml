@@ -28,7 +28,7 @@ spec:
       hostname: openclaw
       containers:
         - name: openclaw
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest-test/openclaw-channels:1.0.3
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/openclaw-manager-openclaw-test:v0.0.1
           securityContext:
             readOnlyRootFilesystem: false
             runAsUser: 0

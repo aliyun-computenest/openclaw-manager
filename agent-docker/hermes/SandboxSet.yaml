@@ -43,7 +43,7 @@ spec:
               value: ""
             - name: KUBERNETES_PORT_443_TCP_PORT
           image: >-
-            compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/openclaw-manager-hermes:v0.0.1
+            compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/openclaw-manager-hermes-test:v0.0.1
           imagePullPolicy: IfNotPresent
           name: hermes
           ports:
