@@ -15,8 +15,7 @@ RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
 # Create hermes data directory
-RUN mkdir -p /root/.hermes
+RUN mkdir -p /opt/data
 
 ENTRYPOINT ["supervisord", "-n"]
-
 
