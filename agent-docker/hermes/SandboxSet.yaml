@@ -1,0 +1,86 @@
+apiVersion: agents.kruise.io/v1alpha1
+kind: SandboxSet
+metadata:
+  name: hermes
+  namespace: default
+spec:
+  persistentContents:
+    - filesystem
+  replicas: 1
+  runtimes:
+    - name: agent-runtime
+  template:
+    metadata:
+      labels:
+        app: hermes
+        alibabacloud.com/acs: "true"
+      annotations:
+        image.alibabacloud.com/enable-image-cache: "true"
+        network.alibabacloud.com/network-policy-mode: "traffic-policy"
+        network.alibabacloud.com/enable-network-policy-agent: "true"
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      shareProcessNamespace: false
+      hostname: hermes
+      containers:
+        - name: hermes
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/hermes-agent:v0.10.8
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["supervisord", "-n"]
+          ports:
+            - containerPort: 8080
+              name: hermes
+              protocol: TCP
+            - containerPort: 9119
+              name: dashboard
+              protocol: TCP
+            - name: runtime
+              containerPort: 49983
+              protocol: TCP
+          env:
+            - name: ENVD_DIR
+              value: /mnt/envd
+            - name: KUBERNETES_SERVICE_PORT_HTTPS
+              value: ""
+            - name: KUBERNETES_SERVICE_PORT
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_PROTO
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_ADDR
+              value: ""
+            - name: KUBERNETES_SERVICE_HOST
+              value: ""
+            - name: KUBERNETES_PORT
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_PORT
+              value: ""
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+          args:
+            - sh
+            - '-c'
+            - >-
+              /mnt/envd/envd-run.sh & (while [ ! -f /root/.hermes/gateway.pid ]; do
+              sleep 2; done; sleep 3; /opt/hermes/.venv/bin/hermes dashboard
+              --host 0.0.0.0 --port 9119 --insecure) & exec
+              /opt/hermes/docker/entrypoint.sh gateway run
+          volumeMounts:
+            - mountPath: /root/.hermes
+              name: hermes-data
+      volumes:
+        - emptyDir: { }
+          name: hermes-data
