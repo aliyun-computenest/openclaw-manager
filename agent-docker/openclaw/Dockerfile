@@ -9,6 +9,10 @@ RUN apt update && \
     apt install -y supervisor tini && \
     rm -rf /var/cache/apt/*
 
+# Copy run-cmd.sh for config modification
+COPY agent-docker/openclaw/run-cmd.sh /usr/local/bin/run-cmd.sh
+RUN chmod +x /usr/local/bin/run-cmd.sh
+
 # Append openclaw supervisor program config
 COPY agent-docker/openclaw/supervisord.conf /tmp/supervisord.conf
 RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
@@ -30,5 +34,3 @@ RUN cd /root/.openclaw/extensions && \
         if [ -f "$dir/package.json" ]; then cd $dir && npm install --production && cd ..; fi; \
     done
 ENTRYPOINT ["supervisord", "-n"]
-
-
