@@ -3,9 +3,30 @@
 # Selectively modifies specific blocks in openclaw.json without replacing the entire file.
 #
 # Usage:
-#   run-cmd.sh modify-model <provider/model>           - Update agents.defaults.model.primary
-#   run-cmd.sh modify-channel <json-string>             - Merge channel config into channels block
-
+#   run-cmd.sh modify-model   <provider/model>    - Update agents.defaults.model.primary
+#   run-cmd.sh modify-channel <channel-json>       - Merge a FULL channel block
+#
+# NOTE on <channel-json>:
+#   The argument must be the complete channel block as openclaw.json expects
+#   it (same shape as channel_templates.config_template, with placeholders
+#   already resolved), e.g. for DingTalk:
+#     {
+#       "dingtalk-connector": {
+#         "enabled": true,
+#         "clientId": "...",
+#         "clientSecret": "...",
+#         "gatewayToken": "...",
+#         "gatewayPassword": "",
+#         "separateSessionByConversation": true,
+#         "groupSessionScope": "group",
+#         "sharedMemoryAcrossConversations": false,
+#         "ackText": "任务已接收"
+#       }
+#     }
+#   The top-level key is the plugin package name (e.g. `dingtalk-connector`),
+#   NOT the bare channel_type (`dingtalk`). Whatever key(s) are in the
+#   incoming JSON will be merged into cfg.channels verbatim, replacing any
+#   existing entry under that same key.
 #
 # Environment variables:
 #   OPENCLAW_CONFIG_PATH  - Path to openclaw.json (default: /home/node/.openclaw/openclaw.json)
@@ -131,8 +152,11 @@ case "${1:-}" in
         echo "OpenClaw configuration modifier"
         echo ""
         echo "Usage:"
-        echo "  run-cmd.sh modify-model <provider/model>       Update model in agents.defaults.model.primary"
-        echo "  run-cmd.sh modify-channel <json-string>        Merge channel config into channels block"
+        echo "  run-cmd.sh modify-model   <provider/model>    Update model in agents.defaults.model.primary"
+        echo "  run-cmd.sh modify-channel <channel-json>       Merge a COMPLETE channel block (e.g. 'dingtalk-connector': {...})"
+        echo "                                                 into cfg.channels. The top-level key must be the"
+        echo "                                                 plugin name used by openclaw.json, NOT the bare"
+        echo "                                                 channel_type (dingtalk → dingtalk-connector)."
 
         echo ""
         echo "Environment variables:"
