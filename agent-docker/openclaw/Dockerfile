@@ -15,12 +15,14 @@ RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
 # Install channel connector plugins directly to extensions directory
+# NOTE: All plugin versions are pinned to ensure compatibility with OpenClaw 2026.3.23
+#       and to keep builds reproducible (avoid version drift from @latest).
 RUN mkdir -p /home/node/.openclaw/extensions && \
     cd /home/node/.openclaw/extensions && \
-    npm pack @wecom/wecom-openclaw-plugin && \
-    npm pack @tencent-connect/openclaw-qqbot@latest && \
-    npm pack @larksuite/openclaw-lark && \
-    npm pack @dingtalk-real-ai/dingtalk-connector
+    npm pack @wecom/wecom-openclaw-plugin@2026.3.30 && \
+    npm pack @tencent-connect/openclaw-qqbot@1.6.7 && \
+    npm pack @larksuite/openclaw-lark@2026.3.31 && \
+    npm pack @dingtalk-real-ai/dingtalk-connector@0.8.10
 
 # Extract and install dependencies for each plugin
 RUN cd /home/node/.openclaw/extensions && \
