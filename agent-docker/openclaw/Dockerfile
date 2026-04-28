@@ -29,6 +29,10 @@ RUN cd /home/node/.openclaw/extensions && \
         mkdir -p $dir && tar -xzf $pkg -C $dir --strip-components=1 && rm $pkg && \
         if [ -f "$dir/package.json" ]; then cd $dir && npm install --production && cd ..; fi; \
     done
+
+# Fix ownership: openclaw runs as 'node' user and needs write access to /home/node/.openclaw
+RUN chown -R node:node /home/node/.openclaw
+
 ENTRYPOINT ["supervisord", "-n"]
 
 
