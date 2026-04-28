@@ -15,7 +15,7 @@ RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
 # Install channel connector plugins directly to extensions directory
-RUN mkdir -pextensions && \
+RUN mkdir -p /home/node/.openclaw/extensions && \
     cd /home/node/.openclaw/extensions && \
     npm pack @wecom/wecom-openclaw-plugin && \
     npm pack @tencent-connect/openclaw-qqbot@latest && \
