@@ -3,10 +3,15 @@ FROM agentscope-registry.ap-southeast-1.cr.aliyuncs.com/agentscope/qwenpaw:lates
 # Switch to root for any customization
 USER root
 
-# Install supervisor (for supervisorctl) and tini. 镜像已经内置了 supervisord 主进程，
-# 我们只需要 supervisorctl 客户端，用于 run-cmd.sh 在修改模型后重启 qwenpaw `app` 子进程。
+# Install supervisor (for supervisorctl) + tini + procps/psmisc/lsof.
+# 镜像已内置 supervisord 主进程，只需 supervisorctl 客户端用于优雅重启。
+# procps(pgrep)/psmisc(fuser)/lsof 为 restart_app 的按端口反查 pid 兑底路径提供
+# 必需工具——官方镜像缺少这些，run-cmd.sh 在 supervisorctl 失败时会按端口 8088
+# 反查 app pid 并 SIGTERM，由 qwenpaw 内置 supervisord 的 autorestart 自动拉起。
+# 注意：apt 装的 supervisorctl 默认连 /var/run/supervisor.sock，但 qwenpaw 内置
+# supervisord 可能用不同 socket 路径，run-cmd.sh 会动态查找实际 socket。
 RUN apt-get update && \
-    apt-get install -y supervisor tini && \
+    apt-get install -y supervisor tini procps psmisc lsof && \
     rm -rf /var/cache/apt/*
 
 # Ensure qwenpaw data directories exist (will be overlaid by emptyDir volumes at runtime)
@@ -37,20 +42,13 @@ RUN chmod -R a+r /opt/qwenpaw-providers
 COPY agent-docker/qwenpaw/run-cmd.sh /usr/local/bin/run-cmd.sh
 RUN chmod +x /usr/local/bin/run-cmd.sh
 
-# Entrypoint wrapper：在原生 entrypoint 之前先 seed providers，让 qwenpaw init
-# 对 /app/working.secret/providers/ 的首次扫描就能看到完整的 3 个默认
-# provider；否则 emptyDir 挂载后 app 会缓存“只有 dashscope”的列表，
-# 平台之后再 supervisorctl restart 可能无法刷新前端可见的 provider。
-COPY agent-docker/qwenpaw/entrypoint-wrapper.sh /usr/local/bin/entrypoint-wrapper.sh
-RUN chmod +x /usr/local/bin/entrypoint-wrapper.sh
-ENTRYPOINT ["/usr/local/bin/entrypoint-wrapper.sh"]
-
 # 说明：
 #   qwenpaw 官方镜像已内置完整启动链：
-#     ENTRYPOINT ["docker-entrypoint.sh"]   ← 被本镜像 wrapper 取代，但在 wrapper 末尾 exec 回来
-#     CMD        ["/entrypoint.sh"]         ← 保持不变，wrapper 原样透传
+#     ENTRYPOINT ["docker-entrypoint.sh"]
+#     CMD        ["/entrypoint.sh"]
 #   /entrypoint.sh 会自动完成：
 #     1. 检查 /app/working/config.json，缺失则执行 `qwenpaw init --defaults --accept-security`
 #     2. 用 QWENPAW_PORT 渲染 /etc/supervisor/conf.d/supervisord.conf.template
 #     3. exec 镜像自带 supervisord，启动 dbus / xvfb / xfce4 / app 四个进程
-#   wrapper 只在此之前插入 `init-providers`，不修改它之后的任何行为。
+#   不覆盖 ENTRYPOINT/CMD，由平台 startup_command (run-cmd.sh modify-model) 在实例
+#   创建后完成 seed + 写入 + supervisorctl restart app，qwenpaw 重启后加载完整 providers。
