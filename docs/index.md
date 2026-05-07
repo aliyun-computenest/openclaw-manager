@@ -85,7 +85,6 @@
 2. 创建备份![img_2.png](img_2.png)
 3. 回到计算巢服务实例界面，选择合适的版本对服务实例升级。![img_3.png](img_3.png)
 4. 验证服务实例升级成功
-
 ---
 
 ## 2. 平台概览
@@ -815,6 +814,111 @@ startretries=-1
 
 保存后系统将向集群 `apply` 该 CRD，创建成功后在「Agent 配置」的「沙箱模板 ID」下拉中即可选择。
 
+#### 4.5.5 在自定义 namespace 部署沙箱
+
+默认情况下 SandboxSet 部署在 `default` namespace。**如果要将沙箱部署到其他 namespace（如业务隔离、多租户场景）**，可参考下面的模板修改 SandboxSet YAML 后通过 `kubectl apply -f <file>.yaml` 提交：
+
+```yaml
+apiVersion: agents.kruise.io/v1alpha1
+kind: SandboxSet
+metadata:
+  name: agent-manager-openclaw
+  namespace: default              # ← 改为目标 namespace，如 agent-platform
+spec:
+  persistentContents:
+    - filesystem
+  replicas: 1
+  runtimes:
+    - name: agent-runtime
+  template:
+    metadata:
+      labels:
+        app: agent-manager-openclaw
+        alibabacloud.com/acs: "true"
+      annotations:
+        image.alibabacloud.com/enable-image-cache: "true"
+        network.alibabacloud.com/network-policy-mode: "traffic-policy"
+        network.alibabacloud.com/enable-network-policy-agent: "true"
+        network.alibabacloud.com/security-group-ids: ${sg-xxx}                    # ← 替换为目标 VPC 的安全组 ID
+        network.alibabacloud.com/vswitch-ids: ${vsw-a},${vsw-b},${vsw-c}          # ← 替换为目标可用区的交换机 ID
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      shareProcessNamespace: false
+      hostname: openclaw
+      containers:
+        - name: agent-manager-openclaw
+          # image 会在创建时被动态覆盖
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:v0.0.2
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+            runAsGroup: 0
+          command: ["supervisord", "-n"]
+          ports:
+            - name: gateway
+              containerPort: 18789
+              protocol: TCP
+            - name: runtime
+              containerPort: 49983
+              protocol: TCP
+          env:
+            - name: OPENCLAW_CONFIG_DIR
+              value: /home/node/.openclaw/openclaw.json
+            # 显式置空 Kubernetes 注入的环境变量，避免 SDK 误以为运行在 Pod 内
+            - name: KUBERNETES_SERVICE_PORT_HTTPS
+              value: ""
+            - name: KUBERNETES_SERVICE_PORT
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_PROTO
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_ADDR
+              value: ""
+            - name: KUBERNETES_SERVICE_HOST
+              value: ""
+            - name: KUBERNETES_PORT
+              value: ""
+            - name: KUBERNETES_PORT_443_TCP_PORT
+              value: ""
+          resources:
+            requests:
+              cpu: 2
+              memory: 4Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+          startupProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 150
+```
+
+**关键修改点 checklist：**
+
+| 字段 | 说明 |
+|------|------|
+| `metadata.namespace` | 改为目标 namespace，需提前 `kubectl create namespace <name>` 创建 |
+| `network.alibabacloud.com/security-group-ids` | 替换为目标 VPC 的安全组 ID（确保安全组放通容器端口 `18789`、`49983`） |
+| `network.alibabacloud.com/vswitch-ids` | 替换为目标可用区的交换机 ID 列表，多个用英文逗号分隔 |
+| `containers[].image` | 实际由平台在创建沙箱时动态覆盖，YAML 中保留占位即可 |
+| `resources.requests/limits` | 根据 Agent 实际负载调整 CPU/内存配额 |
+| `startupProbe` | 容器级启动探针；如自定义健康检查端口/路径，需同步修改 |
+
+> ⚠️ **跨 namespace 注意事项：**
+> 1. **平台需要有访问该 namespace 的 RBAC 权限**：确认 Agent Manager 后端使用的 ServiceAccount 已绑定可访问目标 namespace 中 `sandboxsets`、`pods` 资源的 Role/ClusterRole。
+> 2. **网络可达性**：目标 namespace 的交换机网段需与 Agent Manager 平台所在网络互通。
+> 3. **应用到 Agent 配置**：在「Agent 配置 → 基本配置」中将「沙箱模板 ID」填写为新 SandboxSet 的 `metadata.name`（本例为 `agent-manager-openclaw`），平台才能关联到这份模板。
+
 ---
 
 ### 4.6 模型配置
@@ -1343,6 +1447,16 @@ https://<你的Supabase项目URL>/auth/v1/callback
 
 **A:** 已运行的实例使用的是修改前的沙箱环境。在「沙箱配置」编辑并保存 SandboxSet YAML 后，需在「实例列表」对应实例上点击「停止」再「启动」，新配置才会应用。
 
+### Q14: 想把沙箱部署到非 `default` 的 namespace 怎么办？
+
+**A:** 参考 [4.5.5 在自定义 namespace 部署沙箱](#455-在自定义-namespace-部署沙箱) 提供的 SandboxSet YAML 模板：
+1. 修改 `metadata.namespace` 为目标 namespace（需提前 `kubectl create namespace <name>`）
+2. 替换 `security-group-ids` 和 `vswitch-ids` 为目标 VPC/可用区的资源 ID
+3. `kubectl apply -f <file>.yaml` 提交到集群
+4. 在「Agent 配置 → 基本配置」中把「沙箱模板 ID」填写为新 SandboxSet 的 `metadata.name`
+
+注意 Agent Manager 后端 ServiceAccount 需要有目标 namespace 的 RBAC 权限。
+
 ---
 
-> 文档版本：v2.1 | 更新日期：2026-04-23
+> 文档版本：v2.2 | 更新日期：2026-05-07
