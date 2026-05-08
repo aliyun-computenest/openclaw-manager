@@ -40,7 +40,9 @@ Header: apikey: <ANON_KEY>
 Body: { "email": "...", "password": "..." }
 → Response: { "access_token": "<JWT>", ... }
 ```
-
+anonkey获取：
+可通过去集群查看secret配置VITE_SUPABASE_ANON_KEY或者去supabase控制台查看
+![img.png](img.png)
 ### 使用 Token
 
 所有需要认证的请求，在 Header 中携带：
