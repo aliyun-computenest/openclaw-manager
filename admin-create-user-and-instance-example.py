@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-End-to-end verification for: POST /api/users (admin-side create user).
+End-to-end verification for:
+  - POST /api/users          (admin-side create user)
+  - POST /api/admin/instances (admin-side create instance)
 
 Flow:
   1) GET <PLATFORM_URL>/env-config.js  ->  parse VITE_SUPABASE_URL / ANON_KEY
@@ -8,14 +10,17 @@ Flow:
   3) Pre-check: ensure target email does NOT exist via GET /api/users?search=
   4) POST /api/users  (admin creates a brand-new user; auto-creates auth + profile)
   5) Verify via GET /api/users?search=<email>  (and optional re-create -> 400)
-  6) Cleanup: DELETE /api/users/<id>
+  6) POST /api/admin/instances  (admin creates instance for the new user, async mode)
+  7) Poll GET /api/instances/<id> until status becomes 'running' (or timeout)
+  8) Cleanup: DELETE instance, DELETE user
 
 The script uses ONLY the Python standard library (urllib + json + ssl).
 No third-party deps required.
 
 Usage:
   python3 verify-admin-create-user.py
-  python3 verify-admin-create-user.py --keep   # skip cleanup, keep test user
+  python3 verify-admin-create-user.py --keep          # skip cleanup
+  python3 verify-admin-create-user.py --skip-instance  # skip instance creation
 
 Required:
   --platform-url <URL>   (or env PLATFORM_URL)   e.g. http://<host>:<port>
@@ -77,6 +82,22 @@ def parse_args() -> argparse.Namespace:
         "--keep",
         action="store_true",
         help="Do not delete the created test user at the end",
+    )
+    parser.add_argument(
+        "--skip-instance",
+        action="store_true",
+        help="Skip instance creation test (user-only verification)",
+    )
+    parser.add_argument(
+        "--instance-name",
+        default=None,
+        help="Custom name for the test instance (default: auto-generated)",
+    )
+    parser.add_argument(
+        "--poll-timeout",
+        type=int,
+        default=300,
+        help="Max seconds to wait for instance to become 'running' (default: 300)",
     )
     return parser.parse_args()
 
@@ -162,7 +183,7 @@ def fetch_supabase_config(platform_url: str) -> tuple[str, str]:
     return url_match.group(1), key_match.group(1)
 
 
-def admin_login(supabase_url: str, anon_key: str, email: str, password: str) -> str:
+def supabase_login(supabase_url: str, anon_key: str, email: str, password: str) -> str:
     """POST {supabase}/auth/v1/token?grant_type=password -> access_token."""
     url = supabase_url.rstrip("/") + "/auth/v1/token?grant_type=password"
     status, body = http_json(
@@ -172,10 +193,10 @@ def admin_login(supabase_url: str, anon_key: str, email: str, password: str) -> 
         body={"email": email, "password": password},
     )
     if status != 200 or not isinstance(body, dict) or "access_token" not in body:
-        die(f"Admin login failed (status={status}, body={body})", code=2)
+        die(f"Supabase login failed for {email} (status={status}, body={body})", code=2)
 
     token = body["access_token"]
-    log_info(f"Got admin access_token: {token[:16]}...")
+    log_info(f"Got access_token for {email}: {token[:16]}...")
     return token
 
 
@@ -225,6 +246,73 @@ def delete_user(platform_url: str, token: str, user_id: str) -> tuple[int, Any]:
     return http_json("DELETE", url, headers={"Authorization": f"Bearer {token}"})
 
 
+def create_instance(
+    platform_url: str,
+    token: str,
+    *,
+    name: str,
+    async_mode: bool = True,
+) -> tuple[int, Any]:
+    """POST /api/instances (user creates own instance with their own token)."""
+    url = f"{platform_url.rstrip('/')}/api/instances"
+    return http_json(
+        "POST",
+        url,
+        headers={"Authorization": f"Bearer {token}"},
+        body={
+            "name": name,
+            "async": async_mode,
+        },
+        timeout=120,
+    )
+
+
+def get_instance(platform_url: str, token: str, instance_id: str) -> tuple[int, Any]:
+    """GET /api/instances/:instanceId -> instance detail."""
+    url = f"{platform_url.rstrip('/')}/api/instances/{instance_id}"
+    return http_json("GET", url, headers={"Authorization": f"Bearer {token}"})
+
+
+def delete_instance(platform_url: str, token: str, instance_id: str) -> tuple[int, Any]:
+    """DELETE /api/instances/:instanceId -> kill sandbox & delete record."""
+    url = f"{platform_url.rstrip('/')}/api/instances/{instance_id}"
+    return http_json("DELETE", url, headers={"Authorization": f"Bearer {token}"})
+
+
+def poll_instance_status(
+    platform_url: str,
+    token: str,
+    instance_id: str,
+    *,
+    timeout_seconds: int = 300,
+    poll_interval: int = 10,
+) -> dict:
+    """Poll GET /api/instances/<id> until status is 'running' or timeout."""
+    deadline = time.time() + timeout_seconds
+    last_status = "unknown"
+
+    while time.time() < deadline:
+        status_code, body = get_instance(platform_url, token, instance_id)
+        if status_code != 200 or not isinstance(body, dict) or not body.get("success"):
+            log_info(f"poll: HTTP {status_code}, retrying...")
+            time.sleep(poll_interval)
+            continue
+
+        instance = body.get("instance", {})
+        last_status = instance.get("status", "unknown")
+        log_info(f"poll: status={last_status} (elapsed={int(time.time() + timeout_seconds - deadline)}s)")
+
+        if last_status == "running":
+            return instance
+        if last_status in ("error", "failed"):
+            die(f"instance entered terminal error state: {last_status}")
+
+        time.sleep(poll_interval)
+
+    die(f"instance did not become 'running' within {timeout_seconds}s (last status: {last_status})")
+    return {}
+
+
 # ---------------------------------------------------------------------------
 # Main flow
 # ---------------------------------------------------------------------------
@@ -238,12 +326,15 @@ def main() -> int:
     target_email = f"e2e-py-{stamp}@openclaw.local"
     target_username = f"E2EPy{stamp}"
     target_password = f"Tmp_{stamp}_AbC!"
+    instance_name = args.instance_name or f"e2e-inst-{stamp}"
 
     log_step("config", {
         "platform_url": platform_url,
         "admin_email": args.admin_email,
         "target_email": target_email,
         "target_username": target_username,
+        "skip_instance": args.skip_instance,
+        "instance_name": instance_name,
     })
 
     # 1) discover Supabase
@@ -253,7 +344,7 @@ def main() -> int:
 
     # 2) admin login
     log_step("2) admin login via Supabase")
-    token = admin_login(supabase_url, anon_key, args.admin_email, args.admin_password)
+    token = supabase_login(supabase_url, anon_key, args.admin_email, args.admin_password)
 
     # 3) precondition: target must NOT exist
     log_step("3) pre-check: target email must not exist")
@@ -312,15 +403,76 @@ def main() -> int:
         die("duplicate email creation should have failed but succeeded")
     log_info("OK, duplicate creation correctly rejected")
 
-    # 6) cleanup
-    if args.keep:
-        log_step("6) cleanup skipped (--keep)", {"user_id": created_user_id, "email": target_email})
+    # ------------------------------------------------------------------
+    # 6) create instance for the new user (unless --skip-instance)
+    # ------------------------------------------------------------------
+    created_instance_id = None
+
+    if args.skip_instance:
+        log_step("6) instance creation skipped (--skip-instance)")
     else:
-        log_step("6) cleanup", {"user_id": created_user_id})
+        # 6a) login as the test user to get their own token
+        log_step("6a) login as test user via Supabase")
+        user_token = supabase_login(supabase_url, anon_key, target_email, target_password)
+
+        # 6b) create instance using user's own token
+        log_step("6b) POST /api/instances (async)", {
+            "name": instance_name,
+            "async": True,
+        })
+        inst_status, inst_body = create_instance(
+            platform_url,
+            user_token,
+            name=instance_name,
+        )
+        log_step("   -> response", {"status": inst_status, "body": inst_body})
+
+        if inst_status != 200 or not (isinstance(inst_body, dict) and inst_body.get("success")):
+            die(f"POST /api/instances failed (status={inst_status}, body={inst_body})")
+
+        created_instance_id = inst_body["instance"]["id"]
+        initial_instance_status = inst_body["instance"].get("status", "unknown")
+        log_info(f"created instance_id = {created_instance_id}, initial status = {initial_instance_status}")
+
+        # 7) poll until running (use user token)
+        log_step("7) poll instance status until 'running'", {
+            "instance_id": created_instance_id,
+            "timeout_seconds": args.poll_timeout,
+        })
+        running_instance = poll_instance_status(
+            platform_url, user_token, created_instance_id,
+            timeout_seconds=args.poll_timeout,
+        )
+        log_step("   -> instance is running", {
+            "id": running_instance.get("id"),
+            "name": running_instance.get("name"),
+            "status": running_instance.get("status"),
+            "sandbox_id": running_instance.get("sandbox_id"),
+        })
+
+    # ------------------------------------------------------------------
+    # 8) cleanup
+    # ------------------------------------------------------------------
+    if args.keep:
+        kept = {"user_id": created_user_id, "email": target_email}
+        if created_instance_id:
+            kept["instance_id"] = created_instance_id
+        log_step("8) cleanup skipped (--keep)", kept)
+    else:
+        log_step("8) cleanup")
+
+        if created_instance_id:
+            log_info(f"deleting instance {created_instance_id}...")
+            st_inst, bd_inst = delete_instance(platform_url, token, created_instance_id)
+            log_step("   -> delete instance", {"status": st_inst, "body": bd_inst})
+            if st_inst != 200:
+                log_info(f"WARN: instance delete returned {st_inst}, please clean up manually")
+
+        log_info(f"deleting user {created_user_id}...")
         st, bd = delete_user(platform_url, token, created_user_id)
-        log_step("   -> response", {"status": st, "body": bd})
+        log_step("   -> delete user", {"status": st, "body": bd})
         if st != 200:
-            log_info(f"WARN: delete returned {st}, please clean up manually")
+            log_info(f"WARN: user delete returned {st}, please clean up manually")
 
     log_step("VERDICT", {"result": "PASS"})
     return 0
