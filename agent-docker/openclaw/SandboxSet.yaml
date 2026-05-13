@@ -18,6 +18,7 @@ spec:
   replicas: 1
   runtimes:
     - name: agent-runtime
+    - name: csi
   template:
     metadata:
       labels:
@@ -38,7 +39,7 @@ spec:
       containers:
         - name: agent-manager-openclaw
           # image 会在创建时被动态覆盖
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/openclaw-manager-openclaw-test:v0.0.1
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:v0.0.2
           securityContext:
             readOnlyRootFilesystem: false
             runAsUser: 0
