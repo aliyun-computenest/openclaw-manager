@@ -4,10 +4,17 @@ FROM compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/hermes-agent:
 USER root
 
 
-# Install supervisor and tini for process management
+# Install supervisor, tini and python3-yaml (required by run-cmd.sh for
+# safely editing config.yaml without overwriting user customizations)
 RUN apt update && \
-    apt install -y supervisor tini && \
+    apt install -y supervisor tini python3 python3-yaml && \
     rm -rf /var/cache/apt/*
+
+# Copy run-cmd.sh - selective model/channel config modifier.
+# Invoked by the platform when users change model or channel, so that
+# user-level customizations in config.yaml / .env are preserved.
+COPY agent-docker/hermes/run-cmd.sh /usr/local/bin/run-cmd.sh
+RUN chmod +x /usr/local/bin/run-cmd.sh
 
 # Append hermes supervisor program config
 COPY agent-docker/hermes/supervisord.conf /tmp/supervisord.conf
