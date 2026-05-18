@@ -52,7 +52,7 @@
 
 **第三步：确认信息并创建**
 
-![确认部署信息 — 核对参数后点击「立即创建」](img_1.png)
+![确认部署信息 — 核对参数后点击「立即创建」](images/img_13.png)
 
 1. 核对所有配置参数是否正确
 2. 勾选 **「我已阅读并同意《计算巢服务协议》」**
@@ -85,6 +85,48 @@
 2. 创建备份![img_2.png](img_2.png)
 3. 回到计算巢服务实例界面，选择合适的版本对服务实例升级。![img_3.png](img_3.png)
 4. 验证服务实例升级成功
+
+#### 网络策略注意事项
+
+升级新增的工作负载可能未被集群中已有的 GlobalTrafficPolicy 匹配，需手动修改策略的 selector。详见 [1.6 GlobalTrafficPolicy 网络策略配置](#16-globaltrafficpolicy-网络策略配置)。
+
+### 1.6 GlobalTrafficPolicy 网络策略配置
+
+集群中默认存在 `GlobalTrafficPolicy` 资源，通过 `spec.selector.matchLabels` 选中 Pod 并对其施加网络隔离规则。**使用 SandboxSet 部署的 Agent Pod 如果需要网络隔离，必须确保该策略的 selector 能匹配到对应 Pod 的 label。**
+
+默认策略的 selector 可能与项目实际使用的 Pod label 不一致（例如新增了 `agent-manager-openclaw` 工作负载），此时需要用户到集群中手动修改。
+
+> 📖 关于 GlobalTrafficPolicy 的完整概念和用法，请参阅官方文档：[使用 TrafficPolicy 管理 Agent 网络访问](https://help.aliyun.com/zh/cs/user-guide/use-trafficpolicy-to-manage-agent-network-access-1)
+
+#### 修改步骤
+
+1. 在集群中编辑 GlobalTrafficPolicy 资源：
+
+```bash
+kubectl edit globaltrafficpolicy openclaw-global-policy
+```
+
+2. 修改 `spec.selector.matchLabels`，使其匹配实际 Pod 的 label：
+
+```yaml
+spec:
+  selector:
+    matchLabels:
+      app: agent-manager-openclaw
+```
+
+3. 保存退出后策略自动生效。
+
+#### 新增工作负载时如何配置
+
+当新增了工作负载且需要网络隔离时，同样需要确保 GlobalTrafficPolicy 的 selector 能匹配到新 Pod：
+
+- **相同网络规则** — 修改现有策略的 `spec.selector.matchLabels` 使其匹配新 Pod 的 label
+- **不同网络规则** — 创建新的 GlobalTrafficPolicy 资源，配置独立的 selector 和规则
+
+具体配置方式请参考 [官方文档](https://help.aliyun.com/zh/cs/user-guide/use-trafficpolicy-to-manage-agent-network-access-1)。
+
+---
 ---
 
 ## 2. 平台概览
