@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>Agent Manager function documentation - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#agent-manager-function-documentation">Agent Manager function documentation</a></li>
+              
+                  <li><a href="#1-computing-nest-deployment">1. Computing Nest Deployment</a></li>
+                  
+                      <li class="li-h3"><a href="#11-preconditions">1.1 Preconditions</a></li>
+                  
+                      <li class="li-h3"><a href="#12-deployment-steps">1.2 deployment steps</a></li>
+                  
+                      <li class="li-h3"><a href="#13-deployment-verification">1.3 deployment verification</a></li>
+                  
+                      <li class="li-h3"><a href="#troubleshooting-common-14-deployment-issues">Troubleshooting Common 1.4 Deployment Issues</a></li>
+                  
+                      <li class="li-h3"><a href="#15-service-instance-upgrade">1.5 Service Instance Upgrade</a></li>
+                  
+              
+                  <li><a href="#2-platform-overview">2. Platform Overview</a></li>
+                  
+                      <li class="li-h3"><a href="#21-home-page">2.1 Home Page</a></li>
+                  
+                      <li class="li-h3"><a href="#22-roles-and-permissions">2.2 Roles and Permissions</a></li>
+                  
+              
+                  <li><a href="#3-login-system">3. Login System</a></li>
+                  
+                      <li class="li-h3"><a href="#31-administrator-login">3.1 administrator login</a></li>
+                  
+                      <li class="li-h3"><a href="#32-user-login">3.2 User Login</a></li>
+                  
+              
+                  <li><a href="#4-administrator-function">4. Administrator function</a></li>
+                  
+                      <li class="li-h3"><a href="#41-dashboard">4.1 Dashboard</a></li>
+                  
+                      <li class="li-h3"><a href="#42-user-management">4.2 User Management</a></li>
+                  
+                      <li class="li-h3"><a href="#43-single-sign-on-configuration">4.3 Single Sign-On Configuration</a></li>
+                  
+                      <li class="li-h3"><a href="#44-agent-configuration">4.4 Agent Configuration</a></li>
+                  
+              
+          
+              <li><a href="#configuration-of-alibaba-cloud-ai-gateway-switch-on-demand">Configuration of Alibaba Cloud AI Gateway (Switch on Demand)</a></li>
+              
+          
+              <li><a href="#provider-custom">provider: custom</a></li>
+              
+          
+              <li><a href="#base_url-httpai_gateway_domainv1">base_url: http://${AI_GATEWAY_DOMAIN}/v1</a></li>
+              
+          
+              <li><a href="#api_key-consumer_api_key">api_key: ${CONSUMER_API_KEY}</a></li>
+              
+          
+              <li><a href="#configuration-of-litellm-gateway-switch-on-demand">Configuration of LiteLLM gateway (switch on demand)</a></li>
+              
+          
+              <li><a href="#provider-custom_1">provider: custom</a></li>
+              
+          
+              <li><a href="#base_url-litellm_proxy_url">base_url: ${LITELLM_PROXY_URL}</a></li>
+              
+          
+              <li><a href="#api_key-litellm_api_key">api_key: ${LITELLM_API_KEY}</a></li>
+              
+                  <li><a href="#start-command-example">Start Command Example</a></li>
+                  
+              
+                  <li><a href="#channel-configuration-tab">Channel Configuration Tab</a></li>
+                  
+              
+                  <li><a href="#skill-configuration-tab">Skill Configuration Tab</a></li>
+                  
+              
+                  <li><a href="#443-sandbox-mirror-specification">4.4.3 Sandbox Mirror Specification</a></li>
+                  
+                      <li class="li-h3"><a href="#image-build-logic">Image build logic</a></li>
+                  
+                      <li class="li-h3"><a href="#supervisordconf-specification">supervisord.conf Specification</a></li>
+                  
+                      <li class="li-h3"><a href="#steps-to-access-own-agent">Steps to Access Own Agent</a></li>
+                  
+              
+                  <li><a href="#444-new-custom-agent-type">4.4.4 New Custom Agent Type</a></li>
+                  
+              
+                  <li><a href="#45-sandbox-configuration">4.5 sandbox configuration</a></li>
+                  
+                      <li class="li-h3"><a href="#451-built-in-sandboxset">4.5.1 Built-in SandboxSet</a></li>
+                  
+                      <li class="li-h3"><a href="#452-list-page">4.5.2 List Page</a></li>
+                  
+                      <li class="li-h3"><a href="#453-viewmodify-sandboxset">4.5.3 View/Modify SandboxSet</a></li>
+                  
+                      <li class="li-h3"><a href="#454-new-sandboxset">4.5.4 New SandboxSet</a></li>
+                  
+              
+                  <li><a href="#46-model-configuration">4.6 Model Configuration</a></li>
+                  
+                      <li class="li-h3"><a href="#461-provider-classification">4.6.1 Provider Classification</a></li>
+                  
+                      <li class="li-h3"><a href="#462-configure-alibaba-cloud-bailian-standard-api">4.6.2 Configure Alibaba Cloud Bailian (Standard API)</a></li>
+                  
+                      <li class="li-h3"><a href="#463-configure-ai-gateway">4.6.3 Configure AI Gateway</a></li>
+                  
+                      <li class="li-h3"><a href="#464-new-provider">4.6.4 New Provider</a></li>
+                  
+                      <li class="li-h3"><a href="#465-add-model">4.6.5 Add Model</a></li>
+                  
+                      <li class="li-h3"><a href="#editdelete-model">Edit/Delete Model</a></li>
+                  
+              
+                  <li><a href="#47-alibaba-cloud-ai-gateway">4.7 Alibaba Cloud AI Gateway</a></li>
+                  
+                      <li class="li-h3"><a href="#471-prerequisites-create-an-alibaba-cloud-ai-gateway">4.7.1 Prerequisites: Create an Alibaba Cloud AI Gateway</a></li>
+                  
+                      <li class="li-h3"><a href="#472-configuring-the-ai-gateway-in-the-management-platform">4.7.2 Configuring the AI Gateway in the Management Platform</a></li>
+                  
+                      <li class="li-h3"><a href="#473-effect-of-ai-gateway-enabled">4.7.3 Effect of AI Gateway Enabled</a></li>
+                  
+              
+                  <li><a href="#48-token-statistics-and-current-limiting">4.8 Token Statistics and Current Limiting</a></li>
+                  
+                      <li class="li-h3"><a href="#481-token-statistics">4.8.1 Token Statistics</a></li>
+                  
+                      <li class="li-h3"><a href="#482-global-current-limit-configuration">4.8.2 Global Current Limit Configuration</a></li>
+                  
+                      <li class="li-h3"><a href="#483-individual-current-limit-configuration">4.8.3 Individual Current Limit Configuration</a></li>
+                  
+              
+                  <li><a href="#49-instance-list-administrator-view">4.9 instance list (administrator view)</a></li>
+                  
+                      <li class="li-h3"><a href="#list-function">List function</a></li>
+                  
+                      <li class="li-h3"><a href="#table-column-description">Table Column Description</a></li>
+                  
+                      <li class="li-h3"><a href="#administrator-specific-actions">Administrator-specific actions</a></li>
+                  
+              
+                  <li><a href="#5-user-functions">5. User Functions</a></li>
+                  
+                      <li class="li-h3"><a href="#51-instance-list">5.1 instance list</a></li>
+                  
+                      <li class="li-h3"><a href="#52-to-create-an-agent-instance">5.2 to create an Agent instance</a></li>
+                  
+                      <li class="li-h3"><a href="#53-instance-details-and-configuration">5.3 instance details and configuration</a></li>
+                  
+                      <li class="li-h3"><a href="#54-pause-and-restart-an-instance">5.4 Pause and Restart an Instance</a></li>
+                  
+                      <li class="li-h3"><a href="#overview-of-token-usage-on-the-55-user-side">Overview of Token Usage on the 5.5 User Side</a></li>
+                  
+              
+                  <li><a href="#6-faq">6. FAQ</a></li>
+                  
+                      <li class="li-h3"><a href="#q1-is-there-no-login-method-available-on-the-user-login-page">Q1: Is there no login method available on the user login page?</a></li>
+                  
+                      <li class="li-h3"><a href="#q2-what-if-the-instance-creation-fails">Q2: What if the instance creation fails?</a></li>
+                  
+                      <li class="li-h3"><a href="#q3-token-usage-statistics-are-not-displayed">Q3: Token usage statistics are not displayed?</a></li>
+                  
+                      <li class="li-h3"><a href="#q4-how-do-i-access-a-running-instance">Q4: How do I access a running instance?</a></li>
+                  
+                      <li class="li-h3"><a href="#q5-what-ai-models-are-supported">Q5: What AI models are supported?</a></li>
+                  
+                      <li class="li-h3"><a href="#q6-where-can-i-get-the-client-id-and-client-secret-in-the-channel-configuration">Q6: Where can I get the Client ID and Client Secret in the channel configuration?</a></li>
+                  
+                      <li class="li-h3"><a href="#q7-supabase-page-did-saml-sso-jump-to-after-logging-in-instead-of-the-application">Q7: Supabase page did SAML SSO jump to after logging in instead of the application?</a></li>
+                  
+                      <li class="li-h3"><a href="#q8-oauth-login-button-does-not-appear">Q8: OAuth login button does not appear?</a></li>
+                  
+                      <li class="li-h3"><a href="#q9-how-to-fill-in-the-alibaba-cloud-oauth-callback-address">Q9: How to fill in the Alibaba Cloud OAuth callback address?</a></li>
+                  
+                      <li class="li-h3"><a href="#q10-can-i-configure-multiple-login-methods-at-the-same-time">Q10: Can I configure multiple login methods at the same time?</a></li>
+                  
+                      <li class="li-h3"><a href="#q11-what-agent-types-does-the-platform-support">Q11: What agent types does the platform support?</a></li>
+                  
+                      <li class="li-h3"><a href="#q12-model-call-failed-after-adding-model-provider">Q12: Model call failed after adding model provider?</a></li>
+                  
+                      <li class="li-h3"><a href="#q13-does-the-new-configuration-not-take-effect-after-modifying-the-sandboxset">Q13: Does the new configuration not take effect after modifying the SandboxSet?</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="agent-manager-function-documentation">Agent Manager function documentation</h1>
+<p>Agent Manager is an enterprise-class AI intelligence management platform that provides complete AI intelligence creation, configuration, and management capabilities. The platform supports multiple agent types (such as OpenClaw, Hermes, etc.), and supports multi-model access and multi-channel integration to help enterprises quickly build and manage various AI agents.</p>
+<hr />
+<h2 id="1-computing-nest-deployment">1. Computing Nest Deployment</h2>
+<blockquote>
+<p>This chapter describes how to deploy the Agent Manager management platform (including the Supabase backend database) on an existing ACS cluster through the Alibaba Cloud Computing Nest (ComputeNest).</p>
+</blockquote>
+<h3 id="11-preconditions">1.1 Preconditions</h3>
+<p>Before deploying the Agent Manager management platform, you must deploy <strong>OpenClaw-ACS-Sandbox Cluster Edition</strong>. If it has not been deployed, go to the computing nest to create a Sandbox cluster instance:</p>
+<p>👉<a href="https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&amp;ServiceId=service-56531b838b524f5a83da">Create OpenClaw-ACS-Sandbox Cluster Edition Instance</a></p>
+<h3 id="12-deployment-steps">1.2 deployment steps</h3>
+<p><strong>Step 1: Go to the compute nest deployment page</strong></p>
+<p>In the Compute Nest console, find the <strong>Agent Manager Enterprise</strong> service and click Create Instance to go to the parameter configuration page.</p>
+<p><strong>Step 2: Fill in the deployment parameters</strong></p>
+<p><img alt="Deployment Parameter Configuration-E2B Sandbox, Supabase Database, and Network Configuration " src="../images-en/img.png" /></p>
+<p>Complete each configuration as described below:</p>
+<h4 id="e2b-sandbox-configuration">E2B Sandbox Configuration</h4>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>E2B Sandbox Service Instance</strong></td>
+<td>Yes</td>
+<td>Enter the ID of the <strong>compute nest service instance</strong> of the deployed OpenClaw-ACS-Sandbox cluster edition.</td>
+</tr>
+<tr>
+<td><strong>Platform Namespace</strong></td>
+<td>No</td>
+<td>The namespace of the management platform in the K8s cluster. The default value is 'agent-platform. Generally, it does not need to be modified.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="supabase-database-configuration">Supabase database configuration</h4>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Supabase the zone</strong></td>
+<td>Yes</td>
+<td>-</td>
+<td>Select the zone of the Supabase instance. It must be in the same region as the ACS cluster.</td>
+</tr>
+<tr>
+<td><strong>Supabase instance specification</strong></td>
+<td>Yes</td>
+<td>2C2G</td>
+<td>Database instance specification. Select 2C2G for development and testing. 2C4G or above is recommended for production environments</td>
+</tr>
+<tr>
+<td><strong>Supabase Storage (GB)</strong></td>
+<td>No</td>
+<td>10</td>
+<td>Database Storage Size</td>
+</tr>
+</tbody>
+</table>
+<h4 id="advanced-network-configuration">Advanced Network Configuration</h4>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Supabase VSwitch CIDR block</strong></td>
+<td>Yes</td>
+<td>The CIDR block of the VSwitch (VSwitch) where the Supabase instance is located, for example, '172.20.252.0/22 '</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠* * Important Reminder: The Supabase switch network segment cannot conflict with the existing switch network segment in VPC! * * Before deployment, please check the existing CIDR block of the switch under the current VPC in the <a href="https://vpc.console.aliyun.com/">Alibaba Cloud VPC console</a> to ensure that the filled CIDR block does not overlap with any existing CIDR block, otherwise the deployment will fail.</p>
+</blockquote>
+<p><strong>Step 3: Confirm information and create</strong></p>
+<p><img alt="Confirm the deployment information-check the parameters and click &quot;create now&quot;" src="../images-en/img_1.png" /></p>
+<ol>
+<li>Verify that all configuration parameters are correct</li>
+<li>Check <strong>" I have read and agree to the Computing Nest Service Agreement "</strong></li>
+<li>Click the <strong>Create Now</strong> button to begin the deployment</li>
+</ol>
+<p>The deployment process takes about 5-10 minutes, during which the system will automatically complete the following operations:</p>
+<p>-Create a Supabase database instance
+-Initialize database table structure and administrator account
+-Deploy the management platform application in the ACS cluster
+-Configure ALB Ingress load balancing</p>
+<h3 id="13-deployment-verification">1.3 deployment verification</h3>
+<p>After the deployment is complete, you can obtain the access address of the management platform on the service instance details page of the computing nest console. Open the access address and see the login page of the Agent Manager, indicating that the deployment is successful.</p>
+<blockquote>
+<p><strong>Initial administrator account:</strong> Email admin@agent.local and password admin123 '. <strong>Please change your password immediately after logging in for the first time!</strong></p>
+</blockquote>
+<h3 id="troubleshooting-common-14-deployment-issues">Troubleshooting Common 1.4 Deployment Issues</h3>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Possible Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Deployment fails, indicating a CIDR block conflict</td>
+<td>Supabase the VSwitch and the existing CIDR block overlap in the VPC</td>
+<td>View the existing CIDR block in the VPC console and replace it with a CIDR block that does not conflict with each other.</td>
+</tr>
+<tr>
+<td>Deployment timeout</td>
+<td>Supabase instance creation takes a long time</td>
+<td>View the deployment event log in the Compute Nest console, wait or retry</td>
+</tr>
+<tr>
+<td>The platform page cannot be accessed</td>
+<td>The ALB Ingress is not ready yet</td>
+<td>Wait for 1-2 minutes and try again, or check the status of Ingress resources in the ACS cluster</td>
+</tr>
+<tr>
+<td>Database Connection Failed After Login</td>
+<td>Supabase Instance Not Fully Ready</td>
+<td>Wait for Supabase Instance Status to Change to Running and Retry</td>
+</tr>
+</tbody>
+</table>
+<h3 id="15-service-instance-upgrade">1.5 Service Instance Upgrade</h3>
+<ol>
+<li>Go to the supbase console to manually back up the database.</li>
+<li>Create a backup<img alt="img_2.png" src="../images-en/img_2.png" /></li>
+<li>Return to the computing nest service instance interface and select the appropriate version to upgrade the service instance.<img alt="img_3.png" src="../images-en/img_3.png" /></li>
+<li>Verify that the service instance is upgraded successfully</li>
+</ol>
+<hr />
+<h2 id="2-platform-overview">2. Platform Overview</h2>
+<h3 id="21-home-page">2.1 Home Page</h3>
+<p>Visit the platform homepage, you will see the welcome page of the Agent Manager:</p>
+<p><img alt="Home Page-Display Platform Core Functions and Login Portal" src="../images-en/landing-page.png" /></p>
+<p>The homepage is divided into three areas:</p>
+<p><strong>Top navigation bar:</strong> Contains the platform Logo, "Login" button (normal user OAuth/SSO login) and "Administrator" button (email password login). Logged-in users will see the User Center and Management Center (Administrator) portals.</p>
+<p><strong>Hero area:</strong> Shows the platform slogan "Enterprise AI Agent Management Platform" and two main entry buttons:
+-<strong>User Login</strong>-Jump to the user login page (OAuth/SSO/email password)
+-<strong>Administrator Login</strong>-Jump to the administrator email password login page</p>
+<p><strong>Core function introduction:</strong> Three function cards show the core capabilities of the platform:
+-Smart Body Management-Create, configure, and manage multiple types of AI smart bodies (such as OpenClaw, Hermes, etc.) to support multi-instance deployment.
+-<strong>Multiple models</strong>-Supports large models of mainstream AI such as Qwen and DeepSeek
+-<strong>User Management</strong>-Fine-grained user instance quota management and token quota management</p>
+<h3 id="22-roles-and-permissions">2.2 Roles and Permissions</h3>
+<p>The platform has two roles:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Permission Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>administrator (admin)</strong></td>
+<td>can access all the functions of the management background: dashboard, user management, agent configuration, sandbox configuration, model configuration, instance management (all users)</td>
+</tr>
+<tr>
+<td><strong>Common user</strong></td>
+<td>You can only access the User Center: View, create, and manage your own Agent instances, configure models and channels</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-login-system">3. Login System</h2>
+<p>The platform provides two login portals, respectively for administrators and ordinary users.</p>
+<h3 id="31-administrator-login">3.1 administrator login</h3>
+<p>The administrator uses the mailbox password to log in, and the entrance is separated from the ordinary user.</p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Click the <strong>" Administrator "</strong> button in the upper right corner of the homepage, or directly visit '/admin/login'</li>
+<li>Enter the administrator mailbox and password</li>
+<li>Click the <strong>Login</strong> button</li>
+</ol>
+<p><img alt="Administrator login-login to admin background with email and password" src="../images-en/admin-login.png" /></p>
+<p>After successful login, it will automatically jump to the management background dashboard. If a non-administrator account is entered, it will be redirected to the user center.</p>
+<blockquote>
+<p><strong>Initial administrator account:</strong> During the first deployment, the system automatically creates an administrator account through the database migration script. The default mailbox is usually admin@agent.local and the password is 'admin123 '. <strong>Please change your password immediately after logging in for the first time!</strong></p>
+</blockquote>
+<p>At the bottom of the page, a link is provided to quickly switch to the user login portal.</p>
+<h3 id="32-user-login">3.2 User Login</h3>
+<p>Common users can log on to the following three ways: <strong>Email password logon</strong>, <strong>OAuth third-party logon</strong>, and <strong>SAML SSO enterprise logon</strong>.</p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Click the <strong>Login</strong> button or the <strong>User Login</strong> button on the homepage to go to '/login'</li>
+<li>Select the login method as required:
+-<strong>OAuth Login</strong>-Click the corresponding OAuth provider button (for example, "Alibaba Cloud Login" and "GitHub Login")
+-<strong>SAML SSO Login</strong>-Click the <strong>" Enterprise SSO Login "</strong> button to log in through the enterprise identity authentication system
+-<strong>Login with Email Password</strong>-In the "Login with Account Password" area at the bottom of the page, enter the email address and password assigned by the administrator, and click <strong>" Login "</strong></li>
+</ol>
+<p><img alt="User login-supports multiple login methods of OAuth, SSO and mailbox password" src="../images-en/user-login.png" /></p>
+<p>The layout of the login page from top to bottom is: OAuth button area → SSO button area → separator line ("or login with account password") → mailbox password input form.</p>
+<blockquote>
+<p><strong>Mailbox password login instructions:</strong> The user's mailbox and password are created by the administrator in User Management. When the administrator adds a user, select the "mailbox password" authentication method and set the initial password, the user can use the mailbox and password to log in. For details, see <a href="#42-User Management">4.2 User Management → Add User</a>.</p>
+</blockquote>
+<p>After successful logon, the instance list in the User Center is automatically redisplayed. The <strong>Administrator Login</strong> link is also available at the bottom of the page.</p>
+<hr />
+<h2 id="4-administrator-function">4. Administrator function</h2>
+<p>After logging in, the administrator enters the management background. The navigation bar on the left includes the following function modules.</p>
+<p>The admin backend uses the classic layout of the content area on the right side of the left navigation bar:</p>
+<p>-<strong>Left navigation bar</strong>-List all management function menus, collapsible (click top'X ' / '☰'icon toggle)
+-<strong>Top Title Bar</strong>-Displays the current page title and current login user name
+-<strong>Bottom sidebar</strong>-Display user information and logout button</p>
+<p>The left navigation bar contains the following menu items:</p>
+<table>
+<thead>
+<tr>
+<th>Menu</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dashboard</td>
+<td>'/admin/dashboard'</td>
+<td>Overview of platform operation data</td>
+</tr>
+<tr>
+<td>User Management</td>
+<td>'/admin/users'</td>
+<td>User List, Add, Bulk Import</td>
+</tr>
+<tr>
+<td>_Single Sign-On</td>
+<td>'/admin/sso-config'</td>
+<td>OAuth / SAML SSO configuration (option one)</td>
+</tr>
+<tr>
+<td>* Mailbox authentication</td>
+<td>'/admin/email-auth'</td>
+<td>Logon configuration of mailbox password</td>
+</tr>
+<tr>
+<td>Model configuration</td>
+<td>'/admin/models'</td>
+<td>Manage AI models and providers (AI gateway/standard API)</td>
+</tr>
+<tr>
+<td>Instance List</td>
+<td>'/admin/instances'</td>
+<td>Agent instances of all users</td>
+</tr>
+<tr>
+<td><strong>Agent configuration</strong></td>
+<td>'/admin/agent-types'</td>
+<td><strong>Core functions</strong>:Agent type management (configuration templates, startup commands, channels, and skills)</td>
+</tr>
+<tr>
+<td><strong>Sandbox configuration</strong></td>
+<td>'/admin/sandboxsets'</td>
+<td><strong>Core function</strong>: view and manage SandboxSet resources in the cluster</td>
+</tr>
+</tbody>
+</table>
+<h3 id="41-dashboard">4.1 Dashboard</h3>
+<p><strong>Path:</strong> '/admin/dashboard'</p>
+<p>The dashboard is the home page of the management background and provides a global overview of the platform operation data. The page is divided into three areas from top to bottom.</p>
+<h4 id="basic-statistics-card-top">Basic Statistics Card (Top)</h4>
+<p>The core indicator cards are arranged horizontally at the top of the page, and each card contains icons, values, and labels:</p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>Icon</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Total users</strong></td>
+<td>👥</td>
+<td>Total number of registered platform users</td>
+</tr>
+<tr>
+<td><strong>Agent instance</strong></td>
+<td>📦</td>
+<td>Total number of instances created by all users</td>
+</tr>
+<tr>
+<td><strong>Available Models</strong></td>
+<td>🧠</td>
+<td>Number of AI models currently enabled</td>
+</tr>
+</tbody>
+</table>
+<p>After the AI gateway and SLS logs are enabled, three additional cards are displayed:</p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>Icon</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Active Users Today</strong></td>
+<td>📊</td>
+<td>Number of users with API calls today</td>
+</tr>
+<tr>
+<td><strong>Number of requests today</strong></td>
+<td>🔄</td>
+<td>Total API calls today</td>
+</tr>
+<tr>
+<td><strong>Token usage today</strong></td>
+<td>🔑</td>
+<td>Total token consumption of all users today (formatted display, such as 1.2M)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="recent-agent-instance-middle">Recent Agent Instance (Middle)</h4>
+<p>A white card showing the 5 most recently created instances in tabular form:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td>Instance name</td>
+</tr>
+<tr>
+<td>User</td>
+<td>User mailbox</td>
+</tr>
+<tr>
+<td>Agent Configuration</td>
+<td>The agent types (such as OpenClaw and Hermes) associated with the instance, as shown by indigo color labels.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Green "Running" or gray "Stopped" badge</td>
+</tr>
+<tr>
+<td>Model</td>
+<td>AI model name used</td>
+</tr>
+<tr>
+<td>Creation time</td>
+<td>Creation time in Chinese format</td>
+</tr>
+</tbody>
+</table>
+<h4 id="todays-user-token-consumption-ranking-bottom">Today's User Token Consumption Ranking (Bottom)</h4>
+<p>When the AI gateway and SLS log are enabled, the Token Consumption Ranking List (Top 10) is displayed:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>User</td>
+<td>User mailbox</td>
+</tr>
+<tr>
+<td>Total tokens</td>
+<td>Total number of input and output tokens</td>
+</tr>
+<tr>
+<td>Enter a token</td>
+<td>Number of tokens sent by the user</td>
+</tr>
+<tr>
+<td>Output Token</td>
+<td>Number of AI replies</td>
+</tr>
+<tr>
+<td>Number of requests</td>
+<td>Number of API calls</td>
+</tr>
+</tbody>
+</table>
+<p>If the AI gateway and SLS have not been configured, this area displays gray prompt text.</p>
+<h4 id="ai-gateway-console-entry">AI Gateway Console Entry</h4>
+<p>If a AI gateway has been configured, the <strong>AI Gateway Console</strong> blue button appears in the upper right corner of the dashboard. You can go to the Alibaba Cloud APIG console to view more detailed gateway statistics.</p>
+<h3 id="42-user-management">4.2 User Management</h3>
+<p><strong>Path:</strong> '/admin/users'</p>
+<p>The user management page is used to manage all users of the platform and supports operations such as single addition, batch import, editing, and disabling.</p>
+<h4 id="user-list">User List</h4>
+<p>The top left side of the page is a search box (you can search by user name or mailbox), and the right side is <strong>" add users "</strong> and <strong>" batch import "</strong> two operation buttons.</p>
+<p>The user list is displayed in a table format with the following columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Users</strong></td>
+<td>Displays the user name and email address</td>
+</tr>
+<tr>
+<td><strong>Role</strong></td>
+<td>Administrator/Common User</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Enable/Disable</td>
+</tr>
+<tr>
+<td><strong>Consumer ID</strong></td>
+<td>AI the gateway Consumer ID (displayed only when the AI gateway is enabled. You can click to go to the Alibaba Cloud console)</td>
+</tr>
+<tr>
+<td><strong>Maximum Instance Limit</strong></td>
+<td>Maximum number of instances a user can create</td>
+</tr>
+<tr>
+<td><strong>Token Used</strong></td>
+<td>The number of tokens used by the user today (displayed only when AI Gateway is enabled)</td>
+</tr>
+<tr>
+<td><strong>Actions</strong></td>
+<td>Edit/Reset Password/Enable/Disable</td>
+</tr>
+</tbody>
+</table>
+<p>Pagination is supported at the bottom of the table, with 10 records per page.</p>
+<h4 id="add-user">Add User</h4>
+<p>Click the <strong>Add User</strong> button in the upper right corner and fill in the following information in the pop-up window:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>User name</strong></td>
+<td>Yes</td>
+<td>Display name of the user</td>
+</tr>
+<tr>
+<td><strong>Email</strong></td>
+<td>Depending on the situation, the email login method is required, and the OAuth/SAML method is optional (if left blank, a placeholder email will be automatically generated)</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>Authentication Method</strong></td>
+<td>-</td>
+<td>Select 'Email Password', 'OAuth Single Sign-on', or 'SAML Single Sign-on'</td>
+</tr>
+<tr>
+<td><strong>Password</strong></td>
+<td>Depending on the situation</td>
+<td>Only the mailbox login method requires (at least 6 digits),OAuth/SAML users do not need a password</td>
+</tr>
+<tr>
+<td><strong>Role</strong></td>
+<td>-</td>
+<td>Common User/Administrator</td>
+</tr>
+<tr>
+<td><strong>Maximum number of instances</strong></td>
+<td>-</td>
+<td>Default 5</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Typical scenario: Create account and password for user login</strong></p>
+<ol>
+<li>On the User Management page, click Add User**</li>
+<li>Fill in the user name and email, choose <strong>" Email Password "</strong> as the authentication method, and set the initial password</li>
+<li>after the creation is completed, inform the user of the mailbox and password</li>
+<li>The user can log in by entering the email and password in the "account password login" area at the bottom of the '/login' page</li>
+<li>After logging in, users can create and manage their own Agent instances in the user center.</li>
+</ol>
+</blockquote>
+<h4 id="batch-import-users">Batch import users</h4>
+<p>Click the <strong>" Batch Import "</strong> button in the upper right corner to support two methods:</p>
+<ol>
+<li><strong>Upload CSV/JSON file</strong>-Select local file upload</li>
+<li><strong>Paste data directly</strong>-Paste data in CSV or JSON format in the text box</li>
+</ol>
+<p><strong>CSV format example:</strong></p>
+<p>'''csv
+email,password,username,role,maxInstances,authProvider
+user1@example.com,password123,User1,user,5,email
+user2@example.com,,User2,user,5,oauth
+user3@example.com,,User3,user,5,saml
+'''</p>
+<blockquote>
+<p>Click <strong>Download CSV Template</strong> to obtain a standard template file. The system is also automatically compatible with the CSV format (with fields such as 'userExternalId') exported by Alibaba Cloud IDaaS, and is automatically recognized as a SAML user.</p>
+</blockquote>
+<p>Each batch supports up to 50,000 users. Success and failure statistics are displayed when the import is complete.</p>
+<h4 id="edit-user">Edit User</h4>
+<p>Click the <strong>Edit</strong> icon on the right side of the user row to modify the following user information:</p>
+<p>-User Name
+-Mailbox
+-Role (administrator/normal user)
+-Status (enabled/disabled)
+-Maximum number of instances</p>
+<h3 id="43-single-sign-on-configuration">4.3 Single Sign-On Configuration</h3>
+<p><strong>Path:</strong> '/admin/sso-config'</p>
+<p>The single sign-on configuration page consolidates OAuth and SAML SSO configurations in a unified interface. <strong>OAuth and SAML SSO are mutually exclusive configurations (one of two)</strong>, and the administrator can enable one of them through the toggle button at the top.</p>
+<h4 id="page-composition">Page Composition</h4>
+<p>-<strong>Top Switch Area</strong>-Displays the currently enabled SSO mode (OAuth/SAML/Not Enabled), which can be switched
+-<strong>OAuth tab</strong>-View and manage OAuth login providers
+-<strong>SAML SSO tab</strong>-Configure enterprise SAML 2.0 SSO</p>
+<h4 id="431-oauth-configuration">4.3.1 OAuth Configuration</h4>
+<h4 id="supported-oauth-providers">Supported OAuth Providers</h4>
+<p>The platform supports all Supabase built-in OAuth providers, including but not limited:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Alibaba Cloud (AlibabaCloud)</strong></td>
+<td>Use an Alibaba Cloud RAM account to log on</td>
+</tr>
+<tr>
+<td><strong>GitHub</strong></td>
+<td>Log in with a GitHub account</td>
+</tr>
+<tr>
+<td><strong>Google</strong></td>
+<td>Sign in with your Google account</td>
+</tr>
+<tr>
+<td><strong>Azure AD</strong></td>
+<td>Sign in with Microsoft Azure AD</td>
+</tr>
+<tr>
+<td><strong>GitLab</strong></td>
+<td>Log in with a GitLab account</td>
+</tr>
+<tr>
+<td><strong>Apple</strong></td>
+<td>Sign in with your Apple ID</td>
+</tr>
+<tr>
+<td><strong>Discord / Slack / Twitter / ...</strong></td>
+<td>20 OAuth providers supported by other Supabase are available</td>
+</tr>
+</tbody>
+</table>
+<h4 id="how-to-configure-oauth-take-alibaba-cloud-as-an-example">How to configure OAuth (take Alibaba Cloud as an example)</h4>
+<p>OAuth needs to be configured on both the <strong>Alibaba Cloud console</strong> and the <strong>Supabase console</strong>.</p>
+<p><strong>Step 1: Create an OAuth application on Alibaba Cloud</strong></p>
+<ol>
+<li>Log on to the <a href="https://ram.console.aliyun.com/">Alibaba Cloud RAM Console</a> and go to <strong>OAuth Application Management</strong></li>
+<li>Click <strong>Create OAuth Application</strong></li>
+<li>Fill in the application information:
+-<strong>Application Name</strong>: User-defined name, such as 'Agent Manager'
+-<strong>Application Type</strong>: Select <strong>WebApp</strong>
+-<strong>Callback address (Redirect URI)</strong>:<strong>Here is the key</strong>, fill in the Supabase callback address:
+'''
+https:// <your Supabase project URL>/auth/v1/callback
+'''
+For example: 'https://abc123.supabase.co/auth/v1/callback'</li>
+<li>After the creation is complete, record <strong>AppId</strong> (that is, Client ID)</li>
+<li>On the Application Details page, create a <strong>AppSecret</strong> (Client Secret). <strong>Save it now. The Secret is displayed only once</strong></li>
+<li>In the created application, <strong>Add OAuth Scope</strong>, and add <strong>aliuid</strong> and <strong>profile</strong></li>
+</ol>
+<blockquote>
+<p><strong>Format description of callback address:</strong> Enter 'https:// <your Supabase project URL>/auth/v1/callback' uniformly for callback addresses of all OAuth providers '. Supabase will automatically handle callback routes for different providers, so you don't need to set different callback addresses for different providers.</p>
+</blockquote>
+<p><strong>Step 2: Enable Alibaba Cloud OAuth in the Supabase console</strong></p>
+<ol>
+<li>Log in to the <strong>Supabase console</strong> (the address is configured in the VITE_SUPABASE_URL of '.env')</li>
+<li>Enter <strong>Authentication → Providers</strong></li>
+<li>Find <strong>AlibabaCloud</strong> in the provider list and click Expand</li>
+<li>Turn on the <strong>Enable</strong> switch</li>
+<li>Fill in the <strong>Client ID (AppId)</strong> and <strong>Client Secret (AppSecret)</strong> obtained in the first step</li>
+<li>Click <strong>Save</strong> to save</li>
+<li>Modify the Site URL, find <strong>URL Configuration</strong>, and change the Site URL to the access address of the Agent Manager.</li>
+</ol>
+<p><strong>Step 3: Verify in Agent Manager</strong></p>
+<ol>
+<li>Enter Agent Manager <strong>Management Background → User Management → Single Sign-On → OAuth Tab</strong></li>
+<li>Click the <strong>Refresh</strong> button in the upper right corner</li>
+<li>Confirm that Alibaba Cloud is displayed in <strong>Enabled</strong> status</li>
+</ol>
+<p>After the configuration is complete, the <strong>Alibaba Cloud Login</strong> button appears on the user login page ('/login'):</p>
+<p><img alt="User login page-&quot;Alibaba Cloud login&quot; button is displayed after Alibaba Cloud OAuth has been configured" src="../images-en/user-login.png" /></p>
+<p>After clicking the button, the user will jump to the Aliyun OAuth authorization page. After using the Aliyun RAM account to complete authorization, the user will automatically return to the Agent Manager and complete login.</p>
+<h4 id="configure-other-oauth-providers">Configure other OAuth providers</h4>
+<p>The configuration process of other OAuth providers is exactly the same, but the first step is to create an application on the corresponding platform:</p>
+<table>
+<thead>
+<tr>
+<th>provider</th>
+<th>address for creating application</th>
+<th>callback address to be filled in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GitHub</strong></td>
+<td><a href="https://github.com/settings/developers">GitHub Developer Settings</a> → New OAuth App</td>
+<td>'https://<Supabase URL>/auth/v1/callback'</td>
+</tr>
+<tr>
+<td><strong>Google</strong></td>
+<td><a href="https://console.cloud.google.com/">Google Cloud Console</a> → APIs &amp; Services → Credentials</td>
+<td>'https://<Supabase URL>/auth/v1/callback'</td>
+</tr>
+<tr>
+<td><strong>Azure AD</strong></td>
+<td><a href="https://portal.azure.com/">Azure Portal</a> → App registrations</td>
+<td>'https://<Supabase URL>/auth/v1/callback'</td>
+</tr>
+<tr>
+<td><strong>GitLab</strong></td>
+<td><a href="https://gitlab.com/-/profile/applications">GitLab Applications</a></td>
+<td>'https://<Supabase URL>/auth/v1/callback'</td>
+</tr>
+</tbody>
+</table>
+<p>Regardless of the provider, <strong>callback address always fills in the Supabase callback URL</strong>, which is uniform.</p>
+<h4 id="oauth-configuration-page-function">OAuth configuration page function</h4>
+<p>-<strong>Enabled Providers</strong>-Displays all enabled OAuth providers and their status as cards
+-<strong>" Supabase Console "button</strong>-The page provides a shortcut link to jump directly to the Providers configuration page of the Supabase console.
+-<strong>Refresh button</strong>-Manually pull the latest provider enablement status from the Supabase</p>
+<h4 id="432-saml-sso-configuration">4.3.2 SAML SSO Configuration</h4>
+<p>On the Single Sign-On page, switch to the <strong>SAML tab</strong> to configure enterprise SAML 2.0 single sign-on. After the configuration is complete, the Enterprise SSO Login button appears automatically on the user login page ('/login').</p>
+<blockquote>
+<p>⚠️ <strong>Note:</strong> The current version of the Supabase deployed through the compute nest does not support the SAML SSO feature. To use SAML SSO, after the deployment is complete, manually go to <a href="https://supabase.China.com">Supabase Console</a> to upgrade the Supabase instance to a version that supports SAML, and then configure the following.</p>
+</blockquote>
+<p>This section uses <strong>Alibaba Cloud IDaaS</strong> as an example to describe the complete configuration process. Other IdPs (such as Azure AD, Okta, and so on) process similarly.</p>
+<h4 id="saml-configuration-page-composition">SAML Configuration Page Composition</h4>
+<p>The SAML SSO configuration area contains the following sections:</p>
+<ol>
+<li><strong>SP Information (Configured to IdP)</strong>-The information that the Supabase is displayed as an SP(Service Provider) must be copied to the IdP side</li>
+<li><strong>Callback Address Configuration</strong>-Set the Site URL to be used after SSO login is completed.</li>
+<li><strong>Configured SSO</strong>-View and manage added SAML SSO configurations</li>
+<li><strong>Add SAML SSO</strong>-Add SSO configuration entry</li>
+</ol>
+<h4 id="complete-configuration-process-take-alibaba-cloud-idaas-as-an-example">Complete configuration process (take Alibaba Cloud IDaaS as an example)</h4>
+<p><strong>Step 1: Obtain SP information in Agent Manager</strong></p>
+<p>Go to the <strong>management background → user management → single sign-on → SAML tab</strong>, and record the following two values in the <strong>" SP information (configured to IdP) "</strong> area (click the copy button next to it):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Entity ID (Issuer)</strong></td>
+<td>SP Entity ID</td>
+<td>'https://abc123.supabase.co/sso/saml/metadata'</td>
+</tr>
+<tr>
+<td><strong>ACS URL (Callback)</strong></td>
+<td>Assertion consumer address</td>
+<td>'https://abc123.supabase.co/sso/saml/acs'</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 2: Create a SAML application in the Alibaba Cloud IDaaS console</strong></p>
+<ol>
+<li>Log on to <a href="https://yundun.console.aliyun.com/?p=idaas">Alibaba Cloud IDaaS Console</a></li>
+<li>Enter the corresponding IDaaS instance, click <strong>Application</strong> → <strong>Add Application</strong> → Select <strong>SAML 2.0</strong> Type</li>
+<li>Fill in the application basic information (name, etc.)</li>
+</ol>
+<p><strong>Step 3: Configure the SP information of the IDaaS SAML application</strong></p>
+<p>In the SAML configuration of the IDaaS application:</p>
+<ol>
+<li><strong>SP Entity ID</strong>-Enter the Entity ID obtained in the first step</li>
+<li><strong>SP ACS URL</strong>-Fill in the ACS URL obtained in the first step</li>
+<li><strong>NameID Format</strong>-Select 'emailAddress'</li>
+<li><strong>NameID Expression</strong>-Fill in 'user.email' (Note: write 'user.email' directly, <strong>do not</strong> write '${user.email}')</li>
+</ol>
+<p><strong>Step 4: Add Attribute Declaration</strong></p>
+<p>In the <strong>Attribute Declaration</strong> configuration of the IDaaS application, add the following:</p>
+<table>
+<thead>
+<tr>
+<th>Property name</th>
+<th>Expression</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>'email'</td>
+<td>'user.email'</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 5: Get the IDaaS Metadata URL</strong></p>
+<p>After you save the IDaaS application configuration, copy the <strong>SAML Metadata URL</strong> of the application in the following format:</p>
+<p>'''
+https://<instance>.aliyunidaas.com/api/v2/<app_id>/saml2/meta
+'''</p>
+<p><strong>Step 6: Add SSO configuration in Agent Manager</strong></p>
+<p>Return to the single sign-on SAML tab of the Agent Manager:</p>
+<ol>
+<li>Click the <strong>Add SAML SSO</strong> button in the upper right corner</li>
+<li>Fill in the pop-up window:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SSO domain name</strong></td>
+<td>The domain name of the user's mailbox. SSO is triggered when the user logs on</td>
+<td>'example.com '</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>IdP Metadata URL</strong></td>
+<td>Yes</td>
+<td>IDaaS Metadata URL obtained in Step 5</td>
+<td>'https://xxx.aliyunidaas.com/api/v2/xxx/saml2/meta'</td>
+</tr>
+<tr>
+<td><strong>Mailbox attribute name</strong></td>
+<td>No</td>
+<td>The SAML response contains the attribute name of the mailbox. Default is 'email'</td>
+<td>'email'</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Click <strong>Save Configuration</strong></li>
+</ol>
+<p><strong>Step 7: Set callback address</strong></p>
+<p>Step 7: In the Callback Address Configuration area, set <strong>Site URL</strong> to the application address of your Agent Manager (for example, https://your-app.example.com), and then click <strong>Save</strong>.</p>
+<blockquote>
+<p><strong>Important:</strong> If Site URL is not set, SSO will jump to the default page of the Supabase instead of your application after successful login.</p>
+</blockquote>
+<p><strong>Step 8: Authorize users in IDaaS</strong></p>
+<p>Go back to the Alibaba Cloud IDaaS console and authorize users or user groups that need to log on using SSO for the SAML application.</p>
+<p><strong>Step 9: Validation</strong></p>
+<p>Open the user login page ('/login') and you should see the <strong>" Enterprise SSO Login (your-domain.com) "</strong> button. Click to jump to the IDaaS login page, and automatically return to the Agent Manager after the user logs in successfully using the enterprise account.</p>
+<blockquote>
+<p>If both OAuth and SAML SSO are configured, the user login page displays both the OAuth button and the SSO button, separated by an "or.</p>
+</blockquote>
+<h4 id="manage-configured-sso">Manage Configured SSO</h4>
+<p>You can view all added SAML SSO configurations in the Configured SSO table, including the domain name, IdP Entity ID, and creation time. Click the Delete button on the right to remove the configuration (with a second confirmation).</p>
+<h3 id="44-agent-configuration">4.4 Agent Configuration</h3>
+<p><strong>Path:</strong> '/admin/agent-types'</p>
+<p>Agent configuration is the core function of the platform, which defines what kinds of AI intelligences the platform can create. Each agent type has an independent configuration template (JSON/YAML), startup command, sandbox template, channel configuration, and skill configuration, realizing <strong>type isolation</strong>.</p>
+<h4 id="441-built-in-agent-type">4.4.1 Built-in Agent Type</h4>
+<p>The system has two built-in Agent types by default, and a corresponding SandboxSet sandbox template is created in the cluster during installation (see <a href="#45-sandbox configuration">4.5 sandbox configuration</a>):</p>
+<p>| Type | Code | Configuration Format | Association SandboxSet | Description |
+| ------ | ------ | ---------- | ---------------- | ------------ | ------ |
+| <strong>OpenClaw</strong> | 'openclaw' | JSON | 'agent-manager-openclaw | AI intelligence based on OpenClaw framework, built-in Gateway, multi-channel integration |
+| <strong>Hermes</strong> | 'hermes' | YAML | 'hermes' | agent-manager-hermes | A AI agent based on the Hermes framework with rich personality presets and multi-platform toolsets.</p>
+<p>The list page uses a card-based layout. Each card displays the name, code, description, label (sandbox ID, support channel, configuration path), and activation status. The left colored border distinguishes between enabled (green)/disabled (gray). Supports enabling/disabling switching, editing (details page), and deleting (only custom types).</p>
+<h4 id="442-agent-configuration-details-page">4.4.2 Agent Configuration Details Page</h4>
+<p><strong>Path:</strong> '/admin/agent-types/:id'</p>
+<p>Click Edit on the agent card to go to the details page. The details page contains <strong>four tabs</strong>: Basic Configuration/Configuration Template/Channel Configuration/Skill Configuration.</p>
+<h5 id="basic-configuration-tab">Basic Configuration Tab</h5>
+<p>Edit the basic running parameters of the Agent type:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name/Description</strong></td>
+<td>Display information of the agent type</td>
+</tr>
+<tr>
+<td><strong>Sandbox Template ID</strong></td>
+<td>Select a SandboxSet from the drop-down list and click View or Modify to jump to the corresponding SandboxSet details page.</td>
+</tr>
+<tr>
+<td><strong>Sandbox Timeout</strong></td>
+<td>Instance idle timeout (seconds)</td>
+</tr>
+<tr>
+<td><strong>Configuration Write Path</strong></td>
+<td>The absolute path of the configuration file in the sandbox (OpenClaw:'/home/node/.openclaw/openclaw.json';Hermes:'/opt/data/config.yaml')</td>
+</tr>
+<tr>
+<td><strong>Sandbox user</strong></td>
+<td>The user who executes the startup command</td>
+</tr>
+<tr>
+<td><strong>Start command</strong></td>
+<td>The shell script to be executed after the configuration is written. The script can be written heredoc multiple lines.</td>
+</tr>
+<tr>
+<td><strong>Ready check</strong></td>
+<td>JSON configuration, HTTP/TCP detection is supported. After the instance is started, the system determines whether to enter Running.</td>
+</tr>
+<tr>
+<td><strong>Channel Supported</strong></td>
+<td>The switch controls whether to display "Select Message Channel" when creating an instance.</td>
+</tr>
+<tr>
+<td><strong>Enabled Status</strong></td>
+<td>Enable/disable switching. Only enabled Agent types are displayed when you create an instance.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <strong>Built-in type:</strong> OpenClaw / Hermes is the default supported agent type. The sandbox templates required by these two types have been created in the cluster by default, and the relevant configurations are also fully configured and can be used out of the box.</p>
+</blockquote>
+<h5 id="configure-templates-tab">Configure Templates Tab</h5>
+<p>Configuration templates are the basis for generating instance configuration files when users create instances. OpenClaw uses <strong>JSON</strong> format and Hermes uses <strong>YAML</strong> format to support uploading, editing, downloading, and copying.</p>
+<p>The system replaces the <strong>placeholder</strong> (in the format of '${XXX}') in the template with the actual value at runtime before writing it to the sandbox. Common placeholders:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Source</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>'${MODEL_NAME}'</td>
+<td>Select when user creates an instance</td>
+<td>Model code, such as 'qwen-max'</td>
+</tr>
+<tr>
+<td>'${MODEL_PROVIDER}'</td>
+<td>User selected when creating an instance</td>
+<td>Provider ID, such as 'bailian'</td>
+</tr>
+<tr>
+<td>'${DASHSCOPE_API_KEY}'</td>
+<td>Refined Provider Configuration</td>
+<td>Refined API Key</td>
+</tr>
+<tr>
+<td>'${AI_GATEWAY_DOMAIN}' / '${CONSUMER_API_KEY}'</td>
+<td>Alibaba Cloud AI Gateway</td>
+<td>Gateway domain name/exclusive consumer key</td>
+</tr>
+<tr>
+<td>'${LITELLM_PROXY_URL}' / '${LITELLM_API_KEY}'</td>
+<td>LiteLLM gateway</td>
+<td>Proxy address/user-specific key</td>
+</tr>
+<tr>
+<td>'${GATEWAY_TOKEN}' etc.</td>
+<td>Instance-specific</td>
+<td>System-generated</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠When adding a provider, pay attention to: <strong>The 'apiKeyPlaceholder' / 'domainPlaceholder' filled in when adding a Provider in" Model Configuration "must be exactly the same as the placeholder</strong> name used in the template and startup command **, otherwise the model call will fail.</p>
+</blockquote>
+<p><strong>OpenClaw Configuration Template Example (Compact)</strong>:</p>
+<p>JSON
+{
+"agents": {
+"defaults": {
+"model": { "primary": "${MODEL_PROVIDER}/${MODEL_NAME}"}
+"workspace": "/home/node/.openclaw/workspace"
+}
+},
+"models": {
+"mode": "merge",
+"providers": {
+"bailian": {
+"baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+"apiKey": "${DASHSCOPE_API_KEY}",
+"api": "openai-completions",
+"models": []
+},
+"api_gateway": {
+"baseUrl": "http://${AI_GATEWAY_DOMAIN}/v1 ",
+"apiKey": "${CONSUMER_API_KEY} ",
+"api": "openai-completions",
+"models": []
+}
+}
+},
+"gateway": {
+"port": 18789,
+"auth": { "mode": "token", "token": "${GATEWAY_TOKEN}"}
+}
+}
+'''</p>
+<p><strong>Hermes Configuration Template Example (Compact)</strong>:</p>
+<p>yaml
+model:
+default: ${MODEL_NAME}
+provider: alibaba
+base_url: https://dashscope.aliyuncs.com/compatible-mode/v1</p>
+<h1 id="configuration-of-alibaba-cloud-ai-gateway-switch-on-demand">Configuration of Alibaba Cloud AI Gateway (Switch on Demand)</h1>
+<h1 id="provider-custom">provider: custom</h1>
+<h1 id="base_url-httpai_gateway_domainv1">base_url: http://${AI_GATEWAY_DOMAIN}/v1</h1>
+<h1 id="api_key-consumer_api_key">api_key: ${CONSUMER_API_KEY}</h1>
+<h1 id="configuration-of-litellm-gateway-switch-on-demand">Configuration of LiteLLM gateway (switch on demand)</h1>
+<h1 id="provider-custom_1">provider: custom</h1>
+<h1 id="base_url-litellm_proxy_url">base_url: ${LITELLM_PROXY_URL}</h1>
+<h1 id="api_key-litellm_api_key">api_key: ${LITELLM_API_KEY}</h1>
+<p>terminal: { backend: local, timeout: 180, lifetime_seconds: 300}
+browser: { inactivity_timeout: 120}
+compression: { enabled: true, threshold: 0.5, target_ratio: 0.2}
+memory: { memory_enabled: true, memory_char_limit: 2200}
+agent:
+max_turns: 60
+personalities:
+helpful: You are a helpful, friendly AI assistant.
+concise: You are a concise assistant. Keep responses brief and to the point.
+technical: You are a technical expert. Provide detailed, accurate technical information.
+teacher: You are a patient teacher. Explain concepts clearly with examples.
+platform_toolsets:
+cli: [hermes-cli]
+telegram: [hermes-telegram]
+discord: [hermes-discord]
+slack: [hermes-slack]
+code_execution: { timeout: 300, max_tool_calls: 50}
+'''</p>
+<blockquote>
+<p>⚠* * * When switching model providers: * * When you enable a model provider of the AI gateway class in "Model Configuration", for example, when enabling Alibaba Cloud AI Gateway or LiteLLM, you must switch to the corresponding configuration in the template, otherwise the model call will fail.</p>
+<p>Hermes templates have built-in rich 'personalities' (such as 'kawaii', 'pirate', 'shakespeare', etc.) and multi-platform toolsets (Telegram, Discord, WhatsApp, Slack, Signal, HomeAssistant, etc.) that can be tailored on demand.</p>
+</blockquote>
+<h5 id="start-command-example">Start Command Example</h5>
+<p><strong>OpenClaw</strong> (Restart supervisor management services after configuration writing):</p>
+<p>bash
+chown node:node /home/node/.openclaw/openclaw.json &amp;&amp; \
+supervisorctl restart openclaw
+'''</p>
+<p><strong>Hermes</strong> (add write environment variable file and start):</p>
+<p>bash
+cat &gt; /opt/data/.env &lt;&lt; 'EOF'
+DASHSCOPE_API_KEY =${ DASHSCOPE_ API_KEY}
+CONSUMER_API_KEY =${ CONSUMER_ API_KEY}
+LITELLM_API_KEY =${ LITELLM_ API_KEY}
+End of File
+supervisorctl restart hermes
+'''</p>
+<h5 id="channel-configuration-tab">Channel Configuration Tab</h5>
+<p>The IM message channel template isolated by agent type supports flying books, DingTalk, QQ, and enterprise WeChat. Each channel template contains: channel type, name, description, configuration fields such as '${CHANNEL_CLIENT_ID}'/'${CHANNEL_CLIENT_SECRET}', enabled status. After enabling, the user can select this channel when creating the corresponding agent type instance.</p>
+<blockquote>
+<p>⚠️ <strong>Prerequisites:</strong> To use the channel feature, you need to be based on an image that contains the channel plugin. The default image does not contain the channel plug-in, and the Docker image needs to be rebuilt.</p>
+</blockquote>
+<h5 id="skill-configuration-tab">Skill Configuration Tab</h5>
+<p>Set the SkillHub registry address associated with the Agent type. Default is 'https://clawhub.ai/',Agent实例会连接到SkillHub查找和调用可用的技能 。</p>
+<h4 id="443-sandbox-mirror-specification">4.4.3 Sandbox Mirror Specification</h4>
+<p>The built-in OpenClaw and Hermes Agent types use Docker images customized for the platform **. Semantically, each sandbox is packaged with unified process management, configuration file layout, and health detection ports. The corresponding Dockerfile and SandboxSet source files are located in the project 'agent-docker/' directory:</p>
+<p>'''
+agent-docker/
+├── openclaw/
+│ ├── Dockerfile# Based on the official openclaw image, supplement the supervisor channel plug-in
+│ ├── supervisord.conf # openclaw process daemon configuration
+│-SandboxSet.yaml# Built-in SandboxSet CRD
+└── hermes/
+├── Dockerfile# Based on the official hermes-agent image, supplementary supervisor
+├── supervisord.conf # hermes dashboard dual-process configuration
+SandboxSet.yaml# Built-in SandboxSet CRD
+'''</p>
+<h5 id="image-build-logic">Image build logic</h5>
+<p>Both Dockerfile follow the same <strong>four-step build pattern</strong> to ensure that the image can be taken over by the platform:</p>
+<table>
+<thead>
+<tr>
+<th>Procedure</th>
+<th>Description</th>
+<th>Specification Requirements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Select official base image</strong></td>
+<td>OpenClaw with '<tag>';Hermes with '<tag>'</td>
+<td>Must be based on official/own agent runtime image, not from 'scratch' or minimalist</td>
+</tr>
+<tr>
+<td><strong>2. Install supervisor and tini</strong></td>
+<td>'apt install -y supervisor tini'</td>
+<td>The platform uses 'supervisord -n' as PID = 1 to manage multiple processes, which cannot be omitted</td>
+</tr>
+<tr>
+<td><strong>3. Append process configuration</strong></td>
+<td>'cat supervisord.conf &gt;&gt; /etc/supervisor/supervisord.conf'</td>
+<td>Register the Agent startup command as a supervisor program instead of 'ENTRYPOINT'</td>
+</tr>
+<tr>
+<td><strong>4. Define entry</strong></td>
+<td>'ENTRYPOINT ["supervisord", "-n"]'</td>
+<td>Fixed supervisor foreground operation, platform hot reload via 'supervisorctl restart <program>'</td>
+</tr>
+</tbody>
+</table>
+<p>The OpenClaw image is additionally pre-installed with <strong>channel plug-ins</strong> such as Feishu/DingTalk/Enterprise Micro/QQ through 'npm pack'. The Hermes image additionally starts a 'hermes dashboard' listener process.</p>
+<h5 id="supervisordconf-specification">supervisord.conf Specification</h5>
+<p>'''ini
+[program:openclaw]
+command=openclaw gateway run --allow-unconfigured
+user = node# is the same as the "sandbox user" configured by the Agent.
+environment=HOME="/home/node",OPENCLAW_NO_RESPAWN="1"
+redirect_stderr=true
+stdout_logfile =/proc/1/fd/1# Redirect logs to the container standard output for the platform to collect
+stdout_logfile_maxbytes = 0
+autorestart=true
+startretries=-1
+'''</p>
+<p>Key Specifications:</p>
+<p>-<strong>'user'</strong> must be consistent with the Sandbox User field on the Agent configuration page. Otherwise, 'configWritePath' will fail to start when writing files due to permission problems.
+-<strong>Log Redirection</strong> must be written to '/proc/1/fd/1' (container standard output) to facilitate K8s collection and SLS log service aggregation.
+-<strong>'autorestart = true'</strong> <strong>'startreries =-1 '</strong> This ensures that the Agent process can be automatically pulled up after a crash. This ensures that the Agent process is ready to be checked for fault recovery.
+-<strong>'stopasgroup = true' 'killasgroup = true'</strong> Ensure that child processes can be cleaned up when the sandbox is recycled.</p>
+<h5 id="steps-to-access-own-agent">Steps to Access Own Agent</h5>
+<p>If you need to access your own Agent framework (such as Dify, AutoGen, and self-developed Agent), see the official Dockerfile to build your own image. <strong>You must comply with the following specifications</strong>:</p>
+<ol>
+<li><strong>Based on the Agent runtime image</strong>-'FROM <your-agent-runtime >:&lt; tag&gt;', all dependencies of the Agent are pre-installed.</li>
+<li><strong>Installation supervisor</strong> - 'apt install -y supervisor tini' to ensure that the image has multi-process management capabilities.</li>
+<li><strong>Write supervisord.conf</strong>-Define '[program:<your-agent>]' according to the specification in the previous section, and the user/log path/restart policy are completely aligned with the built-in image.</li>
+<li><strong>The ENTRYPOINT is fixed as'supervisord-n'</strong>-so that the platform can restart <program>'hot reload the new configuration through the'supervisorctl in the startup command.</li>
+<li><strong>Expose Health Check Port</strong>-Enable an HTTP or TCP listening port for the ready check configuration of the Agent.</li>
+<li><strong>Enter SandboxSet.yaml</strong>-For more information, see 'agent-docker/*/SandboxSet.yaml'. Modify fields such as 'metadata.name', 'image', 'ports', 'resources', and 'volumeMounts.</li>
+<li><strong>Upload Image and SandboxSet</strong>-Push the image to a Registry accessible to the cluster (such as ACR), and then paste YAML in Sandbox Configuration→New Sandbox Configurations.</li>
+<li><strong>In Agent Configuration</strong>-When creating an agent type, select the SandboxSet created in the previous step, and enter the <strong>Configuration Write Path</strong>, <strong>Sandbox User</strong>, and <strong>Startup Command</strong>.</li>
+</ol>
+<blockquote>
+<p>💡<strong>Recommended practice:</strong> Directly copy the 'agent-docker/openclaw' or 'agent-docker/hermes' directory as the starting point, rename it to your own agent name and change 'FROM' or 'command' to quickly adapt.</p>
+</blockquote>
+<h4 id="444-new-custom-agent-type">4.4.4 New Custom Agent Type</h4>
+<p>When the two built-in frameworks cannot meet the requirements, the administrator can click <strong>" New Agent Configuration "</strong> in the upper right corner to create a custom type. Two ways are supported:</p>
+<p><strong>Method 1: Copy from template (recommended)</strong></p>
+<p>Select an existing agent type (such as OpenClaw) in the Template Source field, and the system will automatically copy its configuration template, startup command, and channel configuration as the starting point for the new type, and modify it as needed.</p>
+<p><strong>Method 2: Fully Custom</strong></p>
+<p>Select no template source and fill in all fields from blank:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Code</strong></td>
+<td>Yes</td>
+<td>Unique identifier of the agent type (in English), such as 'my-agent'</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Yes</td>
+<td>The display name of the agent type</td>
+</tr>
+<tr>
+<td><strong>Sandbox Template ID</strong></td>
+<td>Yes</td>
+<td>Select from the SandboxSet drop-down (must be created in Sandbox Configuration)</td>
+</tr>
+<tr>
+<td><strong>Configure write path</strong></td>
+<td>No</td>
+<td>The write path of the configuration file in the sandbox</td>
+</tr>
+<tr>
+<td><strong>Start command</strong></td>
+<td>No</td>
+<td>Container start command</td>
+</tr>
+<tr>
+<td><strong>Sandbox User</strong></td>
+<td>No</td>
+<td>Sandbox runtime user (e. g. 'node', 'root')</td>
+</tr>
+<tr>
+<td><strong>Support channel</strong></td>
+<td>No</td>
+<td>Support multi-channel integration</td>
+</tr>
+<tr>
+<td><strong>Readiness check</strong></td>
+<td>No</td>
+<td>Readiness check policies in JSON format (HTTP/port listening, etc.)</td>
+</tr>
+</tbody>
+</table>
+<p>After creating, enter the details page and complete the template content in the "Configuration Template" tab.</p>
+<hr />
+<h3 id="45-sandbox-configuration">4.5 sandbox configuration</h3>
+<p><strong>Path:</strong> '/admin/sandboxsets'</p>
+<blockquote>
+<p>Sandbox configuration is the basis of the Agent running environment. Platform manages sandbox templates by using <strong>SandboxSet</strong> (Kubernetes CRD custom resources in the cluster). Each SandboxSet defines a set of container images, resource specifications, number of copies, and other information for the agent type to reference.</p>
+</blockquote>
+<h4 id="451-built-in-sandboxset">4.5.1 Built-in SandboxSet</h4>
+<p>By default, two SandboxSet are pre-created in the cluster deployed through the computing nest, corresponding to the two built-in Agent types:</p>
+<table>
+<thead>
+<tr>
+<th>SandboxSet Name</th>
+<th>Associated Agent Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>'agent-manager-openclaw'</td>
+<td>OpenClaw</td>
+<td>OpenClaw runtime image (Node.js supervisord)</td>
+</tr>
+<tr>
+<td>'agent-manager-hermes'</td>
+<td>Hermes</td>
+<td>Hermes runtime environment image (Python supervisord)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>💡<strong>Naming convention:</strong> The SandboxSet is automatically associated with the agent type through the name pattern 'agent-manager-<code>. When you add an agent configuration, the Sandbox Template ID selection list displays all SandboxSet under the current namespace.</p>
+</blockquote>
+<h4 id="452-list-page">4.5.2 List Page</h4>
+<p>The list page displays all the SandboxSet installed in the current cluster in a table format:</p>
+<table>
+<thead>
+<tr>
+<th>Column name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name</strong></td>
+<td>SandboxSet resource name</td>
+</tr>
+<tr>
+<td><strong>Namespace</strong></td>
+<td>The K8s namespace (default)</td>
+</tr>
+<tr>
+<td><strong>Image</strong></td>
+<td>Container image address</td>
+</tr>
+<tr>
+<td><strong>Number of replicas</strong></td>
+<td>Number of replicas of the Sandbox pod in operation</td>
+</tr>
+<tr>
+<td><strong>Associated Agent Type</strong></td>
+<td>The agent type automatically identified by the naming convention</td>
+</tr>
+<tr>
+<td><strong>Updated</strong></td>
+<td>Last edited</td>
+</tr>
+<tr>
+<td><strong>Actions</strong></td>
+<td>View/Delete</td>
+</tr>
+</tbody>
+</table>
+<p>The search box at the top supports searching by <strong>name</strong> or <strong>namespace</strong>. The <strong>New Sandbox Configuration</strong> button is displayed in the upper right corner.</p>
+<h4 id="453-viewmodify-sandboxset">4.5.3 View/Modify SandboxSet</h4>
+<p><strong>Path:</strong> '/admin/sandboxsets/:name'</p>
+<p>Click the View or Modify link next to the sandbox template ID in the list row or Agent configuration details page to go to the details page. The details page provides the <strong>YAML editor</strong> that completely SandboxSet the CRD. You can modify the image, number of replicas, environment variables, storage volumes, and other configurations online.</p>
+<p>Operation button:</p>
+<p>-<strong>Save</strong>-Push the modified YAML to the cluster, equivalent to 'kubectl apply'
+-<strong>Copy</strong>-Copies the current YAML to the clipboard
+-<strong>Delete</strong>-Delete the SandboxSet from the cluster. (A second confirmation is required. A warning is issued if the agent type is still referenced.)</p>
+<blockquote>
+<p>⚠️ <strong>Modification Impact:</strong> After the modification is SandboxSet, the running instance must be <strong>restarted</strong> before the new configuration is applied. Before deleting the instance, make sure that no agent type references this template. Otherwise, the agent type cannot create an instance.</p>
+</blockquote>
+<h4 id="454-new-sandboxset">4.5.4 New SandboxSet</h4>
+<p>Click the <strong>" New Sandbox Configuration "</strong> button in the upper right corner of the list page to enter '/admin/sandboxsets/new' and fill in:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name</strong></td>
+<td>Yes</td>
+<td>We recommend that you use the 'agent-manager-<code>'naming convention to SandboxSet the resource name to associate it with the agent type.</td>
+</tr>
+<tr>
+<td><strong>Namespace</strong></td>
+<td>No</td>
+<td>Default 'default'</td>
+</tr>
+<tr>
+<td><strong>YAML</strong></td>
+<td>is a complete SandboxSet CRD YAML, which can be modified after the built-in agent-manager-openclaw/agent-manager-hermes template is copied.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>After saving, the system will send the CRD to the cluster 'apply'. After successful creation, you can select it from the "sandbox template ID" drop-down of "agent configuration.</p>
+<hr />
+<h3 id="46-model-configuration">4.6 Model Configuration</h3>
+<p><strong>Path:</strong> '/admin/models'</p>
+<p>The Model Configuration page is divided into <strong>Model Provider area</strong> in the upper half and <strong>Model Management area</strong> in the lower half. The administrator needs to complete the provider configuration and enable before adding specific models.</p>
+<h4 id="461-provider-classification">4.6.1 Provider Classification</h4>
+<p>The platform divides providers into two broad categories:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Description</th>
+<th>Default support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AI Gateway</strong></td>
+<td>Called through the gateway unified proxy model, supports <strong>Consumer management</strong> (assigns an independent credential to each user), token statistics, and throttling</td>
+<td><strong>Alibaba Cloud AI Gateway</strong> · <strong>LiteLLM</strong></td>
+</tr>
+<tr>
+<td><strong>Standard API</strong></td>
+<td>Directly call the model vendor API and use the global API Key configured by the administrator</td>
+<td><strong>Alibaba Cloud Refinement</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <strong>Global Constraints:</strong> Platform-wide <strong>Only one provider is allowed to be enabled at the same time</strong>. Enabling one automatically disables other providers. The default providers are displayed as cards, and enabled provider cards are highlighted and show the Enabled status.</p>
+</blockquote>
+<h4 id="462-configure-alibaba-cloud-bailian-standard-api">4.6.2 Configure Alibaba Cloud Bailian (Standard API)</h4>
+<p>This is the simplest configuration method. You can call models such as Qwen directly through the Bailian API Key, which is suitable for quick verification or lightweight use.</p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Click on the "Refined" provider card</li>
+<li>In the <strong>API Key</strong> input box, enter the Refined API Key (obtained from the <a href="https://bailian.console.aliyun.com/">Alibaba Cloud Refined Console</a>). The page displays the configuration placeholder prompt: '${DASHSCOPE_API_KEY}'. The API Key filled in will be used to replace this placeholder in the template</li>
+</ol>
+<p><img alt="Model Provider API Key Configuration" src="../images-en/img_4.png" /></p>
+<ol>
+<li>Click <strong>Save Configuration</strong> to save the API Key</li>
+<li>Click the <strong>Enable</strong> button to enable the provider</li>
+</ol>
+<h4 id="463-configure-ai-gateway">4.6.3 Configure AI Gateway</h4>
+<p>When a AI gateway provider creates an instance, <strong>automatically assigns an independent consumer (Consumer) and access credential</strong> to each user, facilitating budget control and auditing. platform built-in two kinds of AI gateway:</p>
+<h5 id="alibaba-cloud-ai-gateway">Alibaba Cloud AI Gateway</h5>
+<p>The AI Gateway capability of calling Alibaba Cloud API Gateway provides consumer management, token throttling, and SLS log analysis. For detailed configuration steps, see <a href="#47-Alibaba Cloud-AI-Gateway">4.7 Alibaba Cloud AI Gateway</a>.</p>
+<h5 id="litellm-gateway">LiteLLM Gateway</h5>
+<p><a href="https://www.litellm.ai/">LiteLLM</a> is an open source Proxy Server that supports hundreds of models (OpenAI / Anthropic / Azure / Qwen/DeepSeek...) Output with a unified OpenAI compatible interface, built-in User / Key separation management, budget control and switching strategy.</p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Click the "LiteLLM Gateway" provider card to enter the configuration panel</li>
+<li>Fill in the core parameters:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Configuration Item</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Proxy URL</strong></td>
+<td>Yes</td>
+<td>Address of the LiteLLM proxy service, such as 'https://litellm.example.com'</td>
+</tr>
+<tr>
+<td><strong>Master Key</strong></td>
+<td>is</td>
+<td>the LiteLLM administrator key ('sk-...') used to automatically create users and access credentials. Encrypt storage on save</td>
+</tr>
+<tr>
+<td><strong>API Key Placeholder</strong></td>
+<td>Yes</td>
+<td>The default value is '${LITELLM_API_KEY}', which must be consistent with the placeholder <strong>in the template/startup command</strong></td>
+</tr>
+<tr>
+<td><strong>Domain name placeholder</strong></td>
+<td>Yes</td>
+<td>The default '${LITELLM_PROXY_URL}' must match the placeholder <strong>in the template/startup command</strong>. **</td>
+</tr>
+<tr>
+<td><strong>Budget per user</strong></td>
+<td>No</td>
+<td>max_budget, maximum cumulative cost per user Key (USD)</td>
+</tr>
+<tr>
+<td><strong>Budget Cycle</strong></td>
+<td>No</td>
+<td>'budget_duration, such as '30d', '7d'</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Click "Save Gateway Configuration" → "Enable 」. Other providers are automatically disabled when enabled.</li>
+</ol>
+<blockquote>
+<p>💡<strong>How it works:</strong> When a user creates an instance, the platform calls the LiteLLM '/user/new''/key/generate' to create an exclusive key for the user, substitutes the key and proxy URL into the '${LITELLM_API_KEY}' / '${LITELLM_PROXY_URL}' placeholder and writes the key and proxy URL to the sandbox.</p>
+</blockquote>
+<h4 id="464-new-provider">4.6.4 New Provider</h4>
+<p>If the default provider cannot meet the requirements (such as directly connected to OpenAI, DeepSeek, or self-built vLLM), click the <strong>Add Provider</strong> button at the top of the list and fill in:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name/ID</strong></td>
+<td>Display name and internal ID of the provider</td>
+</tr>
+<tr>
+<td><strong>Type</strong></td>
+<td>'API' (standard), 'AlibabaCloudAIGateway', 'LiteLLM'</td>
+</tr>
+<tr>
+<td><strong>API Key / Base URL</strong></td>
+<td>For standard APIs, enter the key and base address.</td>
+</tr>
+<tr>
+<td><strong>apiKeyPlaceholder</strong></td>
+<td>will be replaced with the placeholder name of the actual API Key in the template, such as '${DEEPSEEK_API_KEY}'</td>
+</tr>
+<tr>
+<td><strong>domainPlaceholder</strong></td>
+<td>Placeholder name to be replaced with the base address in the template (if required)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <strong>Placeholder matching is the key to adding new providers! The system performs substitution in templates and startup commands by placeholder name. Please confirm before adding a provider:
+1. The corresponding provider node (JSON template) or comment example (YAML template) has been added in "agent configuration→Configuration Template.
+2. Placeholders used in the template (such as '${DEEPSEEK_API_KEY}') are exactly the same as the 'apiKeyPlaceholder' </strong>name in the provider configuration.
+3. If the agent needs to use the key in the startup command (such as '.env' file), add the same placeholder synchronously.</p>
+</blockquote>
+<h4 id="465-add-model">4.6.5 Add Model</h4>
+<p>In the Model Management area, click the Add Model button:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Model name</strong></td>
+<td>Yes</td>
+<td>The display name of the model</td>
+<td>'Max'</td>
+</tr>
+<tr>
+<td><strong>Provider</strong></td>
+<td>Yes</td>
+<td>Select from the Enabled Provider drop-down list</td>
+<td>'bailian' / 'litellm' / 'api_gateway</td>
+</tr>
+<tr>
+<td><strong>Model Code</strong></td>
+<td>Yes</td>
+<td>The identification code of the model</td>
+<td>'qwen-max', 'deepseek-chat'</td>
+</tr>
+<tr>
+<td><strong>Description</strong></td>
+<td>No</td>
+<td>Function description of the model</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<p>Newly added models are enabled by default, and can be enabled/disabled via the switch button on the card. When you create an instance, you can only select models in the <strong>Enabled</strong> status. Search is available at the top of the page to search by model name or provider.</p>
+<h4 id="editdelete-model">Edit/Delete Model</h4>
+<p>-<strong>Edit</strong>-Click the Edit button at the bottom of the card to modify the model name, provider, model code, and description.
+-<strong>Delete</strong>-Click the delete icon and confirm to permanently delete the model</p>
+<h3 id="47-alibaba-cloud-ai-gateway">4.7 Alibaba Cloud AI Gateway</h3>
+<p><strong>Path:</strong> '/admin/gateway'</p>
+<p>The AI gateway is a unified proxy layer that is AI invoked. In this system, the AI gateway is configured as a special model provider node, which supports advanced capabilities such as voucher allocation, token statistics, and flow restriction through the Alibaba Cloud AI gateway unified proxy AI model calls.</p>
+<blockquote>
+<p>For more usage of AI Gateway, please refer to Alibaba Cloud documentation: https://help.aliyun.com/zh/api-gateway/ai-gateway/product-overview/what-is-an-ai-gateway</p>
+</blockquote>
+<h4 id="471-prerequisites-create-an-alibaba-cloud-ai-gateway">4.7.1 Prerequisites: Create an Alibaba Cloud AI Gateway</h4>
+<p>Before configuring a AI gateway in the management platform, you need to create and configure a AI gateway in the Alibaba Cloud console.</p>
+<p><strong>Step 1: Create a AI Gateway instance</strong></p>
+<ol>
+<li>Access the Alibaba Cloud AI Gateway console: 'https://apig.console.aliyun.com'</li>
+<li>Create a AI gateway instance in the corresponding region. The recommended configuration is as follows:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Configuration Item</th>
+<th>Recommended Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Deployment mode</td>
+<td>Serverless</td>
+<td>No O &amp; M required in POC stage</td>
+</tr>
+<tr>
+<td>Billing mode</td>
+<td>Pay-As-You-Go</td>
+<td>Low cost in test phase</td>
+</tr>
+<tr>
+<td>Region</td>
+<td>Same region as business resources</td>
+<td>Such as cn-hangzhou and cn-shanghai</td>
+</tr>
+<tr>
+<td>Network type</td>
+<td>Private network (Intranet) must be enabled</td>
+<td>Ensure that Sandbox pods can be accessed through the VPC intranet, and public network can be enabled on demand</td>
+</tr>
+<tr>
+<td>VPC</td>
+<td>Select the same VPC as the ACS cluster</td>
+<td>View the VPC ID in the ACS console</td>
+</tr>
+<tr>
+<td>Log Service</td>
+<td>Use Log Service</td>
+<td>Provides log analysis and dashboards for troubleshooting</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Step 2: Configure the backend AI service</strong></p>
+<ol>
+<li>In the created AI gateway, create the <strong>Model API</strong></li>
+</ol>
+<p><img alt="Create Model API" src="../images-en/img.png" /></p>
+<ol>
+<li>Scene templates can be selected to quickly create OpenAI compatible routes for seamless access to OpenClaw</li>
+</ol>
+<p><img alt="Select a scene template" src="../images-en/img_1.png" /></p>
+<ol>
+<li>Set API Name and Refined API Key</li>
+</ol>
+<p><img alt="Set API Name and API Key" src="../images-en/img_2.png" /></p>
+<ol>
+<li>After the creation is successful, turn on the "Enable Authentication" switch in the Model API "Consumer Authentication" and select the "API Key" authentication method</li>
+</ol>
+<p><img alt="Enable consumer authentication" src="../images-en/img_3.png" /></p>
+<ol>
+<li>Configure the domain name of the API (optional)
+After the API is successfully created, the default access domain name is provided. In production use, you need to transfer the business domain name to the access domain name through DNS service CNAME. Direct access through the access domain name has a daily access limit of 1000 times, the default access domain name can be used for testing, do not directly use the production.
+You can use this access domain name for testing during the initial verification phase, and then bind the domain name later.</li>
+</ol>
+<p>add a domain name in the AI gateway console
+<img alt="Create domain name" src="images-en/img_9.png" /></p>
+<p>Configure the domain name of the API</p>
+<p><img alt="Configure the domain name of the API" src="images-en/img_10.png" /></p>
+<p>Configure the DNS resolution of the domain name and transfer the business domain name to the access domain name through the DNS service CNAME.</p>
+<h4 id="472-configuring-the-ai-gateway-in-the-management-platform">4.7.2 Configuring the AI Gateway in the Management Platform</h4>
+<p>After the AI gateway on the Alibaba Cloud side is created, return to the management platform for associated configuration.</p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Go to the Model Configuration page and select the model provider you want to mark as a AI gateway (e. g. api_gateway)</li>
+<li>Check the <strong>Mark as AI Gateway</strong> checkbox and click <strong>Enable Gateway</strong>. The dedicated configuration panel of the AI gateway will be expanded.</li>
+</ol>
+<p><img alt="Tagged as AI Gateway" src="images-en/img_5.png" /></p>
+<ol>
+<li>Configure <strong>Alibaba Cloud Credentials</strong>:
+-<strong>AccessKey ID</strong>: the AccessKey ID of the Alibaba Cloud account
+-<strong>AccessKey Secret</strong>: the AccessKey secret of the Alibaba Cloud account.
+-Click <strong>Save Certificate</strong></li>
+</ol>
+<blockquote>
+<p>The credentials saved here are used to obtain and modify the configuration of the AI gateway. The following RAM policies are required for this credential:
+1. <strong>AliyunAPIGFullAccess</strong>: Permissions to manage Cloud Native API Gateway
+2. <strong>AliyunLogReadOnlyAccess</strong>: Read-only access to Log Service</p>
+</blockquote>
+<ol>
+<li>Configure <strong>Gateway Parameters</strong>:</li>
+</ol>
+<p>| Configuration Item | Required | Description |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <strong>Gateway ID</strong> | Yes | The ID of the AI gateway instance, such as gw-xxx |
+| <strong>HTTP API ID</strong> | Yes | The ID of the Model API, such as' api-xxx '|
+| <strong>Region</strong> | Yes | The region where the AI gateway is located |
+| <strong>Environment ID</strong> | - | Fill in the Gateway ID and HTTP API ID and save them. The system automatically obtains them or manually modifies them. Used to identify the publishing environment of the AI gateway |
+| <strong>AI Gateway Domain Name</strong> | - | After you enter the Gateway ID and HTTP API ID, the system automatically obtains the first domain name. You can also modify it manually. The domain name is the actual request address of the OpenClaw instance to call the AI gateway, which can be viewed in the Model API Usage Guide of the AI gateway console. We recommend that you use a custom domain name in the production environment. For the configuration steps, see "Configuring Backend AI Services".</p>
+<ol>
+<li>Click <strong>Save Gateway Configuration</strong></li>
+</ol>
+<blockquote>
+<p>The "Open Console" link is provided in the configuration panel, and you can jump to the Alibaba Cloud AI Gateway console with one click.</p>
+</blockquote>
+<h4 id="473-effect-of-ai-gateway-enabled">4.7.3 Effect of AI Gateway Enabled</h4>
+<p>When the AI gateway is enabled, the system has the following capabilities:</p>
+<p>-<strong>Automatic Credential Assignment</strong>-When a user creates an Agent instance, the system automatically creates a consumer in the AI Gateway and assigns access credentials to the user.
+-<strong>Token Statistics</strong>-The system automatically collects token consumption data of each user through Alibaba Cloud Log Service (SLS)
+-<strong>Token Limits</strong>-You can restrict the use of tokens at the global or individual level (see 4.8.1 Token Statistics for details).</p>
+<h3 id="48-token-statistics-and-current-limiting">4.8 Token Statistics and Current Limiting</h3>
+<p>After the AI gateway is enabled, the system can view the user's token consumption and configure the flow limit policy to control the usage.</p>
+<h4 id="481-token-statistics">4.8.1 Token Statistics</h4>
+<p>Administrators can view token consumption data in the following locations:</p>
+<p>-<strong>User Management Page</strong>-The "Token Consumption Today" and "Token Consumption Last 30 Days" columns in the user list directly display the consumption of each user
+-<strong>Administrator Dashboard</strong>-Displays the number of active users today, the number of requests, the total token consumption, and the consumer token consumption ranking (Top 10)</p>
+<p><img alt="Token Statistics Dashboard" src="images-en/img_7.png" /></p>
+<blockquote>
+<p>Token statistics are provided by Alibaba Cloud SLS Log Service and are available only when the AI gateway is enabled. If the user is not associated with a consumer (the Consumer ID column is displayed as "-"), the token consumption of the user cannot be counted.</p>
+</blockquote>
+<h4 id="482-global-current-limit-configuration">4.8.2 Global Current Limit Configuration</h4>
+<p>The global throttling policy takes effect for all users and is set in the AI gateway configuration panel.</p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Go to the Model Configuration page and select the provider that has been marked as a AI gateway</li>
+<li>Find the "Token Limiting Policy" area at the bottom of the AI gateway configuration panel</li>
+<li>Set current limiting parameters:
+-<strong>Daily Token Limit per User</strong>: The unit is tokens/day. Leave this blank or enter 0 to indicate no limit.
+-<strong>Upper Token Limit Per User Per 30 Days</strong>: The unit is tokens/30 days. Leave this blank or enter 0 to indicate no limit.
+-Two policies can take effect at the same time</li>
+</ol>
+<p><img alt="global token throttling configuration" src="images-en/img_6.png" /></p>
+<ol>
+<li>Click <strong>Save Current Limiting Configuration</strong></li>
+<li>After saving, the page will display the current effective current limit status, such as: "Daily 1,000,000 tokens 40,000,000 tokens every 30 days 」</li>
+</ol>
+<h4 id="483-individual-current-limit-configuration">4.8.3 Individual Current Limit Configuration</h4>
+<p>In addition to global throttling, administrators can set independent throttling policies for individual users. <strong>Individual throttling policies take precedence over global policies.</strong></p>
+<p><strong>Operating Steps:</strong></p>
+<ol>
+<li>Enter the User Management page</li>
+<li>Find the target user in the user list and click the <strong>" Token Limit "</strong> button in the operation column (this button will only be displayed for users associated with the Consumer ID)</li>
+<li>In the pop-up "User Token Limit" dialog box:
+-The page will display the global flow restriction policy as a reference (for example, "Daily: 1,000,000 tokens Every 30 days: 40,000,000 tokens")
+-Fill in the personal current limit value of the user:
+-<strong>Daily Token Limit (Individual)</strong>: unit is tokens/day
+-<strong>Maximum Token Per 30 Days (Individual)</strong>: unit is tokens/30 days
+-Leave blank or enter 0 to indicate that no personal limit is set, and the user will inherit the global limit policy.
+-After setting personal restrictions, the user is subject to personal restrictions</li>
+<li>Click <strong>Save Current Limiting Configuration</strong></li>
+<li>The top of the dialog box will show the user's "current effective token limit" in real time, and indicate the source of each limit ("personal" or "global")</li>
+</ol>
+<p><img alt="Personal Token Limit Configuration" src="images-en/img_8.png" /></p>
+<blockquote>
+<p><strong>Example:</strong> If a user's global daily limit is 1,000,000 tokens and the administrator sets the personal daily limit to 2,000,000 tokens, the effective daily limit for the user is 2,000,000 tokens (personal), and the 30-day limit is still 40,000,000 tokens globally.</p>
+</blockquote>
+<h3 id="49-instance-list-administrator-view">4.9 instance list (administrator view)</h3>
+<p><strong>Path:</strong> '/admin/instances'</p>
+<p>Administrators can view and manage Agent instances created by <strong>All Users</strong>.</p>
+<h4 id="list-function">List function</h4>
+<p>-<strong>Search</strong>-Search by instance name
+-<strong>User Filtering</strong>-Filters instances by user name (only for administrators)
+-<strong>Paging</strong> -10 records per page, support page turning</p>
+<h4 id="table-column-description">Table Column Description</h4>
+<table>
+<thead>
+<tr>
+<th>Column name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ID</strong></td>
+<td>Sandbox ID</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Instance name and description</td>
+</tr>
+<tr>
+<td><strong>User</strong></td>
+<td>The user of the instance (column unique to the administrator)</td>
+</tr>
+<tr>
+<td><strong>Agent Configuration</strong></td>
+<td>The agent type associated with the instance, displayed in indigo color.</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Running/Stopped/Starting/Stopping</td>
+</tr>
+<tr>
+<td><strong>Model</strong></td>
+<td>AI model used</td>
+</tr>
+<tr>
+<td><strong>Creation time</strong></td>
+<td>Instance creation time</td>
+</tr>
+<tr>
+<td><strong>Actions</strong></td>
+<td>View Details/Start/Stop/Delete/View Pod</td>
+</tr>
+</tbody>
+</table>
+<h4 id="administrator-specific-actions">Administrator-specific actions</h4>
+<p>-<strong>View Pod</strong>-If the ACS cluster ID is configured, you can directly go to the Alibaba Cloud Container Service console to view the pod details of the instance.
+-<strong>View Details</strong>-On the Instance Details page, you can view additional information such as the instance user.</p>
+<hr />
+<h2 id="5-user-functions">5. User Functions</h2>
+<p>Ordinary users enter the user center after logging in. The user center also uses the layout of the content area on the right side of the left navigation bar. The navigation bar contains two menu items: <strong>Instance List</strong> and <strong>Profile</strong>.</p>
+<p>The user name, role (common user), and logout button are displayed at the bottom of the left navigation bar.</p>
+<blockquote>
+<p><strong>Note:</strong> If you do not log in and access '/user/instances' directly, the page displays 404. Please complete the login through the login page first.</p>
+<p><img alt="404 is displayed when visiting user page when not logged in" src="../images-en/404-page.png" /></p>
+</blockquote>
+<h3 id="51-instance-list">5.1 instance list</h3>
+<p><strong>Path:</strong> '/user/instances'</p>
+<p>The main page of the user, which displays all Agent instances created by the current user.</p>
+<h4 id="list-function_1">List function</h4>
+<p>-<strong>Search</strong>-In the upper-left corner search box, search by instance name
+-<strong>Create</strong>-The <strong>Create Instance</strong> button in the upper right corner creates a new instance
+-<strong>Paging</strong> -10 records per page, page navigation at the bottom</p>
+<h4 id="table-column-description_1">Table Column Description</h4>
+<table>
+<thead>
+<tr>
+<th>Column name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ID</strong></td>
+<td>Sandbox ID</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Instance name</td>
+</tr>
+<tr>
+<td><strong>Agent Configuration</strong></td>
+<td>The agent type associated with the instance</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Running/Stopped</td>
+</tr>
+<tr>
+<td><strong>Model</strong></td>
+<td>AI model used</td>
+</tr>
+<tr>
+<td><strong>Created</strong></td>
+<td>Created</td>
+</tr>
+<tr>
+<td><strong>Operation</strong></td>
+<td>View Details/Start Stop/Delete</td>
+</tr>
+</tbody>
+</table>
+<h4 id="operation-button-description-from-left-to-right">Operation button description (from left to right)</h4>
+<table>
+<thead>
+<tr>
+<th>Icon</th>
+<th>Action</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>👁Eyes</td>
+<td>View details</td>
+<td>Go to the instance details page to view and modify configurations</td>
+</tr>
+<tr>
+<td>▶/⏹Play/Stop</td>
+<td>Start/Stop</td>
+<td>Green is start, orange is stop; the rotation load icon will be displayed during operation</td>
+</tr>
+<tr>
+<td>🗑Delete</td>
+<td>Delete</td>
+<td>Red, permanently delete the instance and associated Sandbox, confirm</td>
+</tr>
+</tbody>
+</table>
+<h3 id="52-to-create-an-agent-instance">5.2 to create an Agent instance</h3>
+<p><strong>Path:</strong> '/user/instances/create'</p>
+<p>The Create page has the Back to List link at the top and the body is a form card.</p>
+<h4 id="operation-steps">Operation steps</h4>
+<ol>
+<li>On the Instance List page, click the blue <strong>" Create Instance "</strong> button in the upper right corner.</li>
+<li>Fill in the following information:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Select Agent Configuration</strong></td>
+<td>Yes</td>
+<td>Display all enabled Agent types (such as OpenClaw and Hermes) in card form. Click to select one. Display name, description and category label for each card (built-in/custom)</td>
+</tr>
+<tr>
+<td><strong>Instance Name</strong></td>
+<td>Yes</td>
+<td>A meaningful name for the instance, such as "Customer Service Assistant", "Sales Robot"</td>
+</tr>
+<tr>
+<td><strong>Select AI Model</strong></td>
+<td>Yes</td>
+<td>Drop-down selection box to select one from the list of available models configured by the administrator (displays the "Model Name-Provider" format)</td>
+</tr>
+<tr>
+<td><strong>Select Message Channel</strong></td>
+<td>No</td>
+<td>Drop-down selection box to dynamically load available channels based on the selected agent type. Default value: Do not configure temporarily.</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>If the message channel is selected, the form will open a "channel configuration" area, you need to fill in the corresponding Client ID and Client Secret</li>
+<li>Click the <strong>" Create Instance "</strong> button in the lower right corner to submit (the "Create" button will display the loading animation)</li>
+</ol>
+<p>On creation, the system automatically completes the following:</p>
+<p>-Create a sandbox environment based on the selected Agent type
+-Generate instance configuration based on agent configuration template and selected model
+-if AI gateway is enabled, automatically create a AI gateway consumer for that user and assign access credentials
+-Start the Agent service</p>
+<p>Wait for the instance status to change to Running. After the instance is created, the instance details page is automatically redisplayed.</p>
+<h4 id="use-tips">Use Tips</h4>
+<p>At the bottom of the page is a blue tip card with the following suggestions:
+-Create multiple instances for different usage scenarios
+-Select Agent configuration and appropriate AI model
+-After creation, you can modify the configuration at any time on the details page.</p>
+<h3 id="53-instance-details-and-configuration">5.3 instance details and configuration</h3>
+<p><strong>Path:</strong> '/user/instances/:id'</p>
+<p>The instance details page is divided into three card areas: basic information, model configuration, and channel configuration. At the top of the page, there is a Back to List link on the left and action buttons on the right.</p>
+<h4 id="top-operation-button">Top operation button</h4>
+<p>There are two buttons in the upper right corner of the page:</p>
+<table>
+<thead>
+<tr>
+<th>Button</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Start/Stop</strong></td>
+<td>Blue (start) or orange (stop) buttons to control the running state of the instance</td>
+</tr>
+<tr>
+<td><strong>Save Configuration</strong></td>
+<td>Blue button that becomes clickable when model or channel configuration is modified</td>
+</tr>
+</tbody>
+</table>
+<h4 id="basic-information-card">Basic Information Card</h4>
+<p>The core information of the instance is displayed in a two-column grid:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ID</strong></td>
+<td>Sandbox unique identifier (in the format of 'namespace -- podname')</td>
+</tr>
+<tr>
+<td><strong>Name</strong></td>
+<td>Instance name</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Green "Running" or gray "Stopped" badge</td>
+</tr>
+<tr>
+<td><strong>Creation Time</strong></td>
+<td>Instance creation time (Chinese format)</td>
+</tr>
+<tr>
+<td><strong>Last Active</strong></td>
+<td>The last active time of the instance. If not, None is displayed.</td>
+</tr>
+<tr>
+<td><strong>User</strong></td>
+<td>The user name of the instance is displayed only in the administrator view.</td>
+</tr>
+<tr>
+<td><strong>Application access link</strong></td>
+<td>The access URL after the instance is running. The blue clickable link opens in a new window.</td>
+</tr>
+<tr>
+<td><strong>/etc/hosts configuration</strong></td>
+<td>In the development mode, the code blocks with green characters on the black background need to be added to the local hosts file.</td>
+</tr>
+<tr>
+<td><strong>View Container</strong></td>
+<td>Only in the administrator view, go to the Alibaba Cloud console to view the pod.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="model-configuration-card">Model Configuration Card</h4>
+<p>Used to modify the AI model used by the instance:</p>
+<ol>
+<li>Select a new model in the Select AI Model drop-down menu (displays the Model Name (Provider) format)</li>
+<li>After modification, an orange prompt text will appear below: "Modified, click Save Configuration Effective"</li>
+<li>Click the Save Configuration button at the top of the page to save your changes</li>
+</ol>
+<h4 id="channel-configuration-card">Channel Configuration Card</h4>
+<p>Used to modify the message channel of the instance:</p>
+<ol>
+<li>Select the channel type (such as Feishu, DingTalk) in the "Select Channel" drop-down menu, and select "Not Configuring" to clear the channel</li>
+<li>Select the channel and expand the configuration area, including Client ID (text input) and Client Secret (password input)</li>
+<li>The placeholder of the Client Secret input box is "Leave blank and remain unchanged",<em> * only need to be filled in when changing the password</em>*</li>
+<li>After modification, an orange prompt text will appear below. Click the <strong>" Save Configuration "</strong> button to save</li>
+</ol>
+<h3 id="54-pause-and-restart-an-instance">5.4 Pause and Restart an Instance</h3>
+<p>When an Agent instance is not needed, it can be paused to free up computing resources. <strong>After the instance is suspended, the data and memory are retained.</strong></p>
+<h4 id="pause-instance">Pause Instance</h4>
+<ol>
+<li>Locate the target instance on the Instance List page</li>
+<li>Click the Stop button (orange) in the Actions bar</li>
+<li>The instance status will change to "Stopped" and display "Stopped" when finished 」</li>
+</ol>
+<h4 id="restart-the-instance">Restart the instance</h4>
+<p>A suspended instance can be restarted at any time. After recovery, the configuration, data, and historical memory of the instance remain intact.</p>
+<ol>
+<li>On the Instance List page, locate the target instance with a status of Stopped</li>
+<li>Click the Start button (green) in the Actions bar</li>
+<li>The instance status will change to "Starting" and display "Running" when finished 」</li>
+</ol>
+<h3 id="overview-of-token-usage-on-the-55-user-side">Overview of Token Usage on the 5.5 User Side</h3>
+<p>If AI Gateway is enabled, a token usage overview card is displayed at the top of the user instance list page, including:</p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Number of Instances</strong></td>
+<td>Number of Instances owned by the current user</td>
+</tr>
+<tr>
+<td><strong>Token usage today</strong></td>
+<td>The number of tokens used today and the daily limit progress bar</td>
+</tr>
+<tr>
+<td><strong>Token usage in recent 30 days</strong></td>
+<td>Token usage in recent 30 days and 30-day limit progress bar</td>
+</tr>
+</tbody>
+</table>
+<p>The progress bar changes color according to usage: green (&lt;70%), amber (70%-90%), red (≥ 90%).</p>
+<hr />
+<h2 id="6-faq">6. FAQ</h2>
+<h3 id="q1-is-there-no-login-method-available-on-the-user-login-page">Q1: Is there no login method available on the user login page?</h3>
+<p><strong>A:</strong> The user logon page always supports <strong>email password logon</strong> (bottom of the page) without additional configuration. If OAuth or SSO login is also required, the administrator needs to complete the configuration on the "User Management → Single Sign-on" page:
+-<strong>Configure OAuth</strong>: Enable an OAuth provider (such as Alibaba Cloud) in Authentication → Providers of the Supabase console, create an OAuth application on the corresponding platform, and set the callback address to 'https://<Supabase URL>/auth/v1/callback '. For details, see <a href="#431-oauth-configuration">4.3.1 OAuth configuration</a>.
+-<strong>or Configure SAML SSO</strong>: Add enterprise SSO configuration on the SAML tab page of Single Sign-On. For details, see <a href="#432-saml-sso-Configuration">4.3.2 SAML SSO Configuration</a>.
+-<strong>Note:</strong> OAuth and SAML SSO are mutually exclusive configurations (one of two options).</p>
+<p>For mailbox password login, the administrator must first create an account for the user in User Management (select the mailbox password authentication method) before the user can log in using the mailbox and password.</p>
+<h3 id="q2-what-if-the-instance-creation-fails">Q2: What if the instance creation fails?</h3>
+<p><strong>A:</strong> Please check the following:
+1. Whether the user has reached the maximum number of instances (default 5), you can contact the administrator to adjust in user management.
+2. Whether the backend API service and E2B service are connected normally
+3. Whether at least one AI model has been added and enabled in the Model layout
+4. Whether at least one Agent type is enabled in the Agent Configuration
+5. Determine whether the write configuration in the sandboxset is correct. For non-root users, please ensure that the write path is the correct configuration.</p>
+<h3 id="q3-token-usage-statistics-are-not-displayed">Q3: Token usage statistics are not displayed?</h3>
+<p><strong>A:</strong> Token usage statistics depends on AI Gateway and SLS. The administrator must correctly configure and enable the gateway on the AI Gateway page, and the Aliyun AccessKey must have the read permission of SLS. When the AI gateway is not enabled, token-related metric columns are not displayed in dashboards and user management.</p>
+<h3 id="q4-how-do-i-access-a-running-instance">Q4: How do I access a running instance?</h3>
+<p><strong>A:</strong> After the instance is started, the Application Access Link is displayed on the instance details page 」. Click the link to open the Agent interface in a new window. If it is a development environment, the details page may display the '/etc/hosts' configuration, which needs to be added to the local hosts file before it can be accessed normally.</p>
+<h3 id="q5-what-ai-models-are-supported">Q5: What AI models are supported?</h3>
+<p><strong>A:</strong> The platform itself does not limit the model type. Administrators can freely add model providers and models on the Model Configuration page. Common models include:
+-Qwen Series (Tongyi Thousand Questions)
+-DeepSeek series
+-Other models compatible with OpenAI API format</p>
+<h3 id="q6-where-can-i-get-the-client-id-and-client-secret-in-the-channel-configuration">Q6: Where can I get the Client ID and Client Secret in the channel configuration?</h3>
+<p><strong>A:</strong> According to different channel types, go to the corresponding platform to create a robot application and obtain the following information:
+-<strong>Flying Book</strong>-<a href="https://open.feishu.cn/">Flying Book Open Platform</a>
+-<strong>DingTalk</strong>-<a href="https://open.dingtalk.com/">DingTalk Open Platform</a>
+-<strong>Enterprise WeChat</strong>-<a href="https://work.weixin.qq.com/">Enterprise WeChat Management Background</a>
+-<strong>QQ</strong>-<a href="https://q.qq.com/">QQ Open Platform</a></p>
+<h3 id="q7-supabase-page-did-saml-sso-jump-to-after-logging-in-instead-of-the-application">Q7: Supabase page did SAML SSO jump to after logging in instead of the application?</h3>
+<p><strong>A:</strong> Go to <strong>Management Background → User Management → Single Sign-On → SAML Tab</strong>, set the Site URL to your application address (such as https://your-app.example.com) in the "Callback Address Configuration" area, save it and try again.</p>
+<h3 id="q8-oauth-login-button-does-not-appear">Q8: OAuth login button does not appear?</h3>
+<p><strong>A:</strong> The OAuth provider needs to be enabled in the <strong>Supabase Console</strong> instead of the Agent Manager. Please:
+1. Log in to the Supabase console → Authentication → Providers
+2. Find the corresponding provider (such as AlibabaCloud) and turn on the Enable switch
+3. Enter the Client ID / Client Secret of the corresponding platform
+4. After saving, return to the Agent Manager "single sign on→OAuth tab" Click "refresh" to confirm the status
+5. Visit the user login page ('/login') again, and the corresponding login button should have appeared</p>
+<h3 id="q9-how-to-fill-in-the-alibaba-cloud-oauth-callback-address">Q9: How to fill in the Alibaba Cloud OAuth callback address?</h3>
+<p><strong>A:</strong> When you create an OAuth application in the RAM console, enter the callback address (Redirect URI):</p>
+<p>'''
+https:// <your Supabase project URL>/auth/v1/callback
+'''</p>
+<p>For example 'https://abc123.supabase.co/auth/v1/callback '. Supabase automatically handles the callback logic for all OAuth providers, all of which use the same callback address.</p>
+<h3 id="q10-can-i-configure-multiple-login-methods-at-the-same-time">Q10: Can I configure multiple login methods at the same time?</h3>
+<p><strong>A:</strong> OAuth and SAML SSO are mutually exclusive configurations (one of two options). The administrator selects one of them on the Single Sign-On configuration page. The mailbox password login is always available, alongside OAuth/SAML. You can enable multiple OAuth providers (such as Alibaba Cloud GitHub Google) at the same time, but you cannot enable OAuth and SAML SSO at the same time.</p>
+<h3 id="q11-what-agent-types-does-the-platform-support">Q11: What agent types does the platform support?</h3>
+<p><strong>A:</strong> Platform provides two built-in Agent types: <strong>OpenClaw</strong>(JSON configuration) and <strong>Hermes</strong>(YAML configuration). The sandbox templates agent-manager-openclaw and agent-manager-hermes are automatically created in the cluster during deployment. In addition, the administrator can also add a type in "Agent Configuration" through "Copy from Template" or "Custom Create", and create a corresponding SandboxSet in "Sandbox Configuration" to support any Agent framework compatible with E2B sandbox.</p>
+<h3 id="q12-model-call-failed-after-adding-model-provider">Q12: Model call failed after adding model provider?</h3>
+<p><strong>A:</strong> The probability is that the placeholder does not match. The 'apiKeyPlaceholder' / 'domainPlaceholder' entered when adding a provider must be the same as the placeholder name <strong>used in the Agent configuration template and startup command</strong>. Otherwise, the template variable replacement will skip this provider. See <a href="#464-New Provider">4.6.4 New Provider</a>.</p>
+<h3 id="q13-does-the-new-configuration-not-take-effect-after-modifying-the-sandboxset">Q13: Does the new configuration not take effect after modifying the SandboxSet?</h3>
+<p><strong>A:</strong> The running instance uses the sandbox environment before modification. After editing and saving the SandboxSet YAML in the sandbox configuration, click Stop on the instance corresponding to the instance list and then Start to apply the new configuration.</p>
+<hr />
+<blockquote>
+<p>document version: v2.1 | update date: 2026-04-23</p>
+</blockquote>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2026-05-19 02:59:39.001361+00:00
+  -->
+</body>
+</html>
