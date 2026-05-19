@@ -156,14 +156,14 @@ kubectl get events -n sandbox-system --sort-by='.lastTimestamp' | tail -10
 
 ### 1. e2b-ca-cert Secret（CA 证书）
 
-从 `sandbox-system` 复制最新证书到 `agent-manager`。
+从 `sandbox-system` 复制最新证书到 `openclaw-platform`。
 
 **方式一：ACK 控制台**
 
 1. 进入集群 → **配置管理 → 保密字典**
 2. 命名空间选 `sandbox-system`，找到 `sandbox-manager-tls`，点击进入查看详情
 3. 复制 `tls.crt` 字段的 base64 值
-4. 切换命名空间到 `agent-manager`，找到 `e2b-ca-cert`
+4. 切换命名空间到 `openclaw-platform`，找到 `e2b-ca-cert`
 5. 点击 **编辑**，将 `ca-fullchain.pem` 字段的值替换为刚才复制的 `tls.crt` 值
 6. 保存
 
@@ -171,7 +171,7 @@ kubectl get events -n sandbox-system --sort-by='.lastTimestamp' | tail -10
 
 ```bash
 CERT=$(kubectl -n sandbox-system get secret sandbox-manager-tls -o jsonpath='{.data.tls\.crt}')
-kubectl -n agent-manager patch secret e2b-ca-cert \
+kubectl -n openclaw-platform patch secret e2b-ca-cert \
   -p "{\"data\":{\"ca-fullchain.pem\":\"$CERT\"}}"
 ```
 
@@ -179,14 +179,14 @@ kubectl -n agent-manager patch secret e2b-ca-cert \
 
 ---
 
-### 2. agent-manager-config ConfigMap（E2B_DOMAIN）
+### 2. openclaw-platform-config ConfigMap（E2B_DOMAIN）
 
 确认 `E2B_DOMAIN` 是否变化，如果变了需要更新。
 
 **方式一：ACK 控制台**
 
 1. 进入集群 → **配置管理 → 配置项**
-2. 命名空间选 `agent-manager`，找到 `agent-manager-config`
+2. 命名空间选 `openclaw-platform`，找到 `openclaw-platform-config`
 3. 点击 **编辑**，找到 `E2B_DOMAIN` 字段
 4. 将值修改为新的 E2B 域名
 5. 保存
@@ -195,11 +195,11 @@ kubectl -n agent-manager patch secret e2b-ca-cert \
 
 ```bash
 # 查看当前域名
-kubectl -n agent-manager get configmap agent-manager-config \
+kubectl -n openclaw-platform get configmap openclaw-platform-config \
   -o jsonpath='{.data.E2B_DOMAIN}'
 
 # 如果域名变了，更新 ConfigMap
-kubectl -n agent-manager patch configmap agent-manager-config \
+kubectl -n openclaw-platform patch configmap openclaw-platform-config \
   -p '{"data":{"E2B_DOMAIN":"<新的E2B域名>"}}'
 ```
 
@@ -207,14 +207,14 @@ kubectl -n agent-manager patch configmap agent-manager-config \
 
 ---
 
-### 3. agent-manager-secret Secret（E2B_API_KEY）
+### 3. openclaw-platform-secret Secret（E2B_API_KEY）
 
-如果 E2B 更新后 API Key 也变了，需要同步更新。
+如果 E2B 更新后 API Key 也变了，需要同步更新。如果没更新则忽略
 
 **方式一：ACK 控制台**
 
 1. 进入集群 → **配置管理 → 保密字典**
-2. 命名空间选 `agent-manager`，找到 `agent-manager-secret`
+2. 命名空间选 `openclaw-platform`，找到 `openclaw-platform-secret`
 3. 点击 **编辑**，找到 `E2B_API_KEY` 字段
 4. 将值修改为新的 API Key（控制台会自动处理 base64 编码）
 5. 保存
@@ -223,7 +223,7 @@ kubectl -n agent-manager patch configmap agent-manager-config \
 
 ```bash
 NEW_KEY_B64=$(echo -n "<新的E2B_API_KEY>" | base64)
-kubectl -n agent-manager patch secret agent-manager-secret \
+kubectl -n openclaw-platformr patch secret openclaw-platform-secret \
   -p "{\"data\":{\"E2B_API_KEY\":\"$NEW_KEY_B64\"}}"
 ```
 
@@ -236,14 +236,9 @@ kubectl -n agent-manager patch secret agent-manager-secret \
 **方式一：ACK 控制台**
 
 1. 进入集群 → **工作负载 → 无状态**
-2. 命名空间选 `agent-manager`，找到 `agent-manager`
+2. 命名空间选 `openclaw-platform`，找到 `openclaw-platform`
 3. 点击右侧 **更多 → 重新部署**
 
-**方式二：kubectl 命令**
-
-```bash
-kubectl -n agent-manager delete pod -l app=agent-manager
-```
 
 **作用**：Pod 重启后会加载新的证书文件 + 读取新的环境变量。
 
@@ -253,10 +248,10 @@ kubectl -n agent-manager delete pod -l app=agent-manager
 
 | 配置项 | K8s 资源 | 命名空间 | 何时需要改 |
 |--------|----------|----------|-----------|
-| CA 证书 | Secret `e2b-ca-cert` | `agent-manager` | E2B 重新签发了 TLS 证书 |
-| E2B 域名 | ConfigMap `agent-manager-config` → `E2B_DOMAIN` | `agent-manager` | E2B 的 ALB/域名地址变了 |
-| API Key | Secret `agent-manager-secret` → `E2B_API_KEY` | `agent-manager` | E2B 重新生成了 API Key |
-| 重启 Pod | Deployment `agent-manager` | `agent-manager` | 以上任一项变更后必须执行 |
+| CA 证书 | Secret `e2b-ca-cert` | `openclaw-platformr` | E2B 重新签发了 TLS 证书 |
+| E2B 域名 | ConfigMap `openclaw-platform-config` → `E2B_DOMAIN` | `openclaw-platformr` | E2B 的 ALB/域名地址变了 |
+| API Key | Secret `openclaw-platform-secret` → `E2B_API_KEY` | `openclaw-platformr` | E2B 重新生成了 API Key |
+| 重启 Pod | Deployment `openclaw-platform` | `openclaw-platform` | 以上任一项变更后必须执行 |
 
 ---
 
