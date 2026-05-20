@@ -24,10 +24,10 @@ RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
 # NOTE: Versions are pinned for build reproducibility.
 RUN su - node -s /bin/bash -c "\
     cd /home/node/.openclaw && \
-    openclaw plugins install @dingtalk-real-ai/dingtalk-connector@0.8.21 && \
-    openclaw plugins install @wecom/wecom-openclaw-plugin@2026.5.14 && \
-    openclaw plugins install @tencent-connect/openclaw-qqbot@1.7.1 && \
-    openclaw plugins install @larksuite/openclaw-lark@2026.5.13"
+    openclaw plugins install --trust @dingtalk-real-ai/dingtalk-connector@0.8.21 && \
+    openclaw plugins install --trust @wecom/wecom-openclaw-plugin@2026.5.14 && \
+    openclaw plugins install --trust @tencent-connect/openclaw-qqbot@1.7.1 && \
+    openclaw plugins install --trust @larksuite/openclaw-lark@2026.5.13"
 
 # Fix ownership: openclaw runs as 'node' user and needs write access to /home/node/.openclaw
 RUN chown -R node:node /home/node/.openclaw
