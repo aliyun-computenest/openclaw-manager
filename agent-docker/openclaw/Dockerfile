@@ -18,25 +18,16 @@ COPY agent-docker/openclaw/supervisord.conf /tmp/supervisord.conf
 RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
-# Install channel connector plugins directly to extensions directory
-# NOTE: All plugin versions are pinned to ensure compatibility with OpenClaw 2026.3.23
-#       and to keep builds reproducible (avoid version drift from @latest).
-RUN mkdir -p /home/node/.openclaw/extensions && \
-    cd /home/node/.openclaw/extensions && \
-    npm config set registry https://registry.npmmirror.com && \
-    npm cache clean -f && \
-    npm pack @wecom/wecom-openclaw-plugin && \
-    npm pack @tencent-connect/openclaw-qqbot && \
-    npm pack @dingtalk-real-ai/dingtalk-connector && \
-    npm pack @larksuite/openclaw-lark
-
-# Extract and install dependencies for each plugin
-RUN cd /home/node/.openclaw/extensions && \
-    for pkg in *.tgz; do \
-        dir=$(echo $pkg | sed 's/-[0-9].*//'); \
-        mkdir -p $dir && tar -xzf $pkg -C $dir --strip-components=1 && rm $pkg && \
-        if [ -f "$dir/package.json" ]; then cd $dir && npm install --production && cd ..; fi; \
-    done
+# Install channel connector plugins via openclaw's native plugin system.
+# v5.18 plugins depend on openclaw/plugin-sdk/core which is only resolvable
+# when installed through the official CLI (sets up proper module symlinks).
+# NOTE: Versions are pinned for build reproducibility.
+RUN su - node -s /bin/bash -c "\
+    cd /home/node/.openclaw && \
+    openclaw plugins install @dingtalk-real-ai/dingtalk-connector@0.8.21 && \
+    openclaw plugins install @wecom/wecom-openclaw-plugin@2026.5.14 && \
+    openclaw plugins install @tencent-connect/openclaw-qqbot@1.7.1 && \
+    openclaw plugins install @larksuite/openclaw-lark@2026.5.13"
 
 # Fix ownership: openclaw runs as 'node' user and needs write access to /home/node/.openclaw
 RUN chown -R node:node /home/node/.openclaw
