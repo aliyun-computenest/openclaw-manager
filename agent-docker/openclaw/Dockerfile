@@ -1,4 +1,4 @@
-FROM ghcr.io/openclaw/openclaw:latest
+FROM ghcr.io/openclaw/openclaw:2026.5.19
 
 # Switch to root to install plugins
 USER root
@@ -35,6 +35,13 @@ RUN cd /home/node/.openclaw/extensions && \
         mkdir -p $dir && tar -xzf $pkg -C $dir --strip-components=1 && rm $pkg && \
         if [ -f "$dir/package.json" ]; then cd $dir && npm install --production && cd ..; fi; \
     done
+
+# Expose the OpenClaw host package (/app, name="openclaw") to plugin extensions so that
+# ESM bare specifiers like `import "openclaw/plugin-sdk/core"` used by newer plugin
+# versions (e.g. dingtalk-connector >= 0.8.21) can be resolved by Node.js. Without this
+# symlink the plugin fails to register with: Cannot find module 'openclaw/plugin-sdk/core'.
+RUN mkdir -p /home/node/.openclaw/node_modules && \
+    ln -sfn /app /home/node/.openclaw/node_modules/openclaw
 
 # Fix ownership: openclaw runs as 'node' user and needs write access to /home/node/.openclaw
 RUN chown -R node:node /home/node/.openclaw
