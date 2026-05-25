@@ -45,5 +45,10 @@ RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
 # Create hermes data directory
 RUN mkdir -p /opt/data
 
+# Disable tirith (Terraform policy checker) — not needed for our use case.
+# Without this, hermes downloads a 12MB binary from GitHub on every cold start,
+# adding ~60-70s to startup time.
+ENV TIRITH_ENABLED=false
+
 ENTRYPOINT ["supervisord", "-n"]
 
