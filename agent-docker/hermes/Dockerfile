@@ -1,4 +1,4 @@
-FROM nousresearch/hermes-agent:v0.14.0
+FROM nousresearch/hermes-agent:v2026.5.16
 
 # Switch to root to install plugins
 USER root
