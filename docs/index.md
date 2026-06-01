@@ -6,7 +6,7 @@
 
 ## 1. 计算巢部署
 
-> 本章介绍如何通过阿里云计算巢（ComputeNest）在已有 ACS 集群上部署 Agent Manager 管理平台（含 Supabase 后端数据库）。
+> 本章介绍如何通过阿里云计算巢（ComputeNest）在已有 ACS 集群上部署 Agent Manager 管理平台。平台支持两种 Supabase 部署模式：**阿里云托管 Supabase**（自动创建）和**接入已有开源 Supabase**。
 
 
 ### 1.1 前置条件
@@ -33,6 +33,14 @@
 |------|------|------|
 | **E2B Sandbox 服务实例** | 是 | 填写已部署的 OpenClaw-ACS-Sandbox 集群版的**计算巢服务实例 ID** |
 | **平台命名空间** | 否 | 管理平台在 K8s 集群中的命名空间，默认 `agent-platform`，一般无需修改 |
+
+#### Agent 访问网关配置
+
+| 参数 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| **启用 Agent 访问网关** | 否 | 开启 | 开启后，平台新生成的 Agent 访问链接会先经过 nginx 网关校验平台登录态和实例归属，再转发到真实 Agent；关闭后继续使用旧的 E2B 直连地址。 |
+
+开启后，模板会创建一个 Agent Gateway SLB。服务实例输出中会展示 **Agent 访问网关** 地址，新建 Agent 的“应用访问链接”默认使用 `http://<AgentGatewaySlb IP>:8080/<实例ID>/`。该开关只保护平台新生成的访问链接，不会自动关闭真实 E2B 上游入口；确认网关访问可用后，如需完全防止绕过，请再通过安全组、ACL 或等效网络策略收口真实 E2B 入口。
 
 #### Supabase 数据库配置
 
@@ -65,6 +73,79 @@
 - 在 ACS 集群中部署管理平台应用
 - 配置 ALB Ingress 负载均衡
 
+### 1.2.1 使用已有开源 Supabase 部署
+
+在 **Supabase 部署模式**（`SupabaseDeploymentMode`）中选择 **`UseExistingOpenSource`**，可接入已部署的开源 Supabase，而非由计算巢自动创建阿里云托管实例。适用于兼容性验证、迁移测试等场景，**不推荐用于生产环境**。
+
+#### 必填参数
+
+| 参数 | 必填 | 说明 |
+|------|------|------|
+| **ExistingSupabaseUrl** | 是 | 已有 Supabase 公网 URL，供浏览器访问，如 `http://8.153.101.22:8000`，**不要**以 `/` 结尾 |
+| **ExistingSupabaseInternalUrl** | 否 | 服务端访问 URL。同集群部署时建议使用 K8s Service 地址，如 `http://supabase-supabase-kong.<namespace>.svc:8000`；不填则使用公网 URL |
+| **ExistingSupabaseAnonKey** | 是 | 从 Supabase 部署输出获取 |
+| **ExistingSupabaseServiceRoleKey** | 是 | 从 Supabase 部署输出获取 |
+| **ExistingSupabaseDatabaseUrl** | 是 | 格式：`postgresql://postgres:<url-encoded-password>@<host>:5432/postgres` |
+
+此模式下 **Supabase 可用区、实例规格、存储空间、交换机网段** 等参数无需填写。
+
+> ⚠️ **责任边界：** 使用已有 Supabase 时，实例的可用性、版本升级、数据备份和安全加固由用户自行负责，计算巢不会托管该 Supabase 实例。
+
+### 1.2.2 开源 Supabase 独立部署
+
+开源 Supabase 部署模板（`supabase_template.yaml`）可独立部署一套开源 Supabase 到 ACS/ACK 集群，部署完成后将其输出值填入 Manager 模板的 `UseExistingOpenSource` 参数即可接入。该模板独立维护，不在 Agent Manager 仓库中。
+
+#### 关键参数
+
+| 参数 | 说明 |
+|------|------|
+| **ClusterId** | 目标 ACS/ACK 集群 ID |
+| **DeploymentNamespace** | Supabase 部署命名空间 |
+| **DashboardUsername** | Supabase Dashboard 登录用户名 |
+| **DashboardPassword** | Supabase Dashboard 登录密码 |
+| **DbPassword** | PostgreSQL 数据库密码 |
+| **JwtSecret** | JWT 签名密钥 |
+
+#### Auth 配置参数
+
+| 参数 | 说明 |
+|------|------|
+| **OAuthProvider** | OAuth 提供商（`none` / `github` / `google` 等） |
+| **OAuthClientId** | OAuth Client ID |
+| **OAuthClientSecret** | OAuth Client Secret |
+| **EnableSaml** | 是否启用 SAML SSO |
+| **SamlIdpMetadataUrl** | IdP Metadata URL |
+| **SamlDomain** | 触发 SSO 的邮箱域名 |
+
+#### 模板输出值
+
+| 输出 | 说明 | Manager 对应参数 |
+|------|------|------------------|
+| **SupabaseUrl** | 公网访问地址 | `ExistingSupabaseUrl` |
+| **AnonKey** | anon key | `ExistingSupabaseAnonKey` |
+| **ServiceRoleKey** | service role key | `ExistingSupabaseServiceRoleKey` |
+| **InternalUrl** | 集群内网地址 | `ExistingSupabaseInternalUrl` |
+| **DatabaseUrl** | 数据库连接地址 | `ExistingSupabaseDatabaseUrl` |
+
+#### 新建集群部署
+
+如果尚未创建 ACK 集群，可使用新建集群版 Supabase 部署模板（`supabase_template_new_cluster.yaml`），模板会自动新建 ACK 集群并部署 Supabase。该模板独立维护，不在 Agent Manager 仓库中。
+
+除上述 Supabase 和 Auth 配置参数外，还需填写：
+
+| 参数 | 说明 |
+|------|------|
+| **PayType** | 付费类型：按量付费（PostPaid）或包年包月（PrePaid） |
+| **ZoneId** | 可用区 |
+| **VpcOption** | 新建或使用已有 VPC |
+| **WorkerInstanceType** | Worker 节点实例规格 |
+| **WorkerInstanceCount** | Worker 节点数量，默认 3 |
+| **LoginPassword** | 节点登录密码 |
+| **AckNetworkPlugin** | 网络插件：flannel 或 terway |
+| **ServiceCidr** | Service CIDR 网段 |
+
+模板输出与已有集群版一致，可直接用于 Manager 的 `UseExistingOpenSource` 模式。
+
 ### 1.3 部署验证
 
 部署完成后，在计算巢控制台的服务实例详情页中可以获取管理平台的访问地址。打开访问地址，看到 Agent Manager 的登录页面即表示部署成功。
@@ -79,11 +160,13 @@
 | 部署超时 | Supabase 实例创建耗时较长 | 在计算巢控制台查看部署事件日志，等待或重试 |
 | 平台页面无法访问 | ALB Ingress 尚未就绪 | 等待 1-2 分钟后重试，或检查 ACS 集群中 Ingress 资源状态 |
 | 登录后提示数据库连接失败 | Supabase 实例未完全就绪 | 等待 Supabase 实例状态变为「运行中」后重试 |
+| Site URL 保存返回 501 | 使用了开源 Supabase | 开源 GoTrue 不支持 `/modify/settings` API，请使用 `kubectl set env` 手动配置 `GOTRUE_SITE_URL` |
+| 邮箱认证开关返回 501 | 使用了开源 Supabase | 开源 GoTrue 不支持修改 `mailer_autoconfirm`，请使用 `kubectl set env` 配置 SMTP 和 `GOTRUE_MAILER_AUTOCONFIRM=false`，详见 [4.3.3 邮箱认证配置](#433-邮箱认证配置) |
 
 ### 1.5 服务实例升级
 1. 前往supbase控制台手动备份数据库
-2. 创建备份![img_2.png](img_2.png)
-3. 回到计算巢服务实例界面，选择合适的版本对服务实例升级。![img_3.png](img_3.png)
+2. 创建备份![img_2.png](images/img_14.png)
+3. 回到计算巢服务实例界面，选择合适的版本对服务实例升级。![img_3.png](images/img_15.png)
 4. 验证服务实例升级成功
 
 #### 网络策略注意事项
@@ -127,6 +210,141 @@ spec:
 具体配置方式请参考 [官方文档](https://help.aliyun.com/zh/cs/user-guide/use-trafficpolicy-to-manage-agent-network-access-1)。
 
 ---
+
+### 1.7 Agent 访问网关证书与开关
+
+Agent 访问网关用于保护 Agent Web 页面。用户从平台点击“应用访问链接”时，浏览器先进入 nginx 网关，网关校验当前登录态和实例归属后再代理到真实 Agent。
+
+#### 默认行为
+
+| 场景 | 行为 |
+|------|------|
+| 新部署或升级时保持默认参数 | 自动创建 Agent Gateway SLB，平台新生成的 Agent 访问链接走 `http://<AgentGatewaySlb IP>:8080/<实例ID>/`。 |
+| 部署时关闭 **启用 Agent 访问网关** | 不创建网关资源，平台继续返回旧的 E2B 直连地址。 |
+| 已开启网关但未配置证书 | 使用 HTTP/IP 网关入口，具备平台鉴权，但链路不加密。 |
+| 已开启网关并配置证书 | 使用 HTTPS 域名网关入口，格式为 `https://<域名>/<实例ID>/`。 |
+
+> 以下命令中的 `NAMESPACE` 请替换为平台命名空间。新模板默认是 `openclaw-platform`；如果部署时修改过命名空间，请使用实际值。
+
+#### 配置 nginx HTTPS 证书
+
+1. 获取网关 SLB 公网 IP，并把准备使用的域名解析到该 IP。
+
+```bash
+NAMESPACE=openclaw-platform
+GATEWAY_IP="$(kubectl -n "$NAMESPACE" get svc openclaw-agent-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+echo "$GATEWAY_IP"
+```
+
+2. 用该域名签发证书后，在平台命名空间创建或更新固定名称 TLS Secret。
+
+```bash
+NAMESPACE=openclaw-platform
+kubectl -n "$NAMESPACE" create secret tls openclaw-agent-gateway-tls \
+  --cert=/path/to/fullchain.pem \
+  --key=/path/to/tls.key \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+3. 重启 Agent Gateway，让 nginx 读取证书并启用 443 监听。
+
+```bash
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-agent-gateway
+kubectl -n "$NAMESPACE" rollout status deployment/openclaw-agent-gateway --timeout=300s
+```
+
+4. 将平台生成的 Agent 访问链接切到 HTTPS 域名，并重启平台。
+
+```bash
+GATEWAY_DOMAIN=https://agents.example.com
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+  --type merge \
+  -p "{\"data\":{\"AGENT_GATEWAY_DOMAIN\":\"$GATEWAY_DOMAIN\"}}"
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+kubectl -n "$NAMESPACE" rollout status deployment/openclaw-platform --timeout=300s
+```
+
+5. 验证网关健康检查。
+
+```bash
+curl -I https://agents.example.com/__agent_gateway_health
+```
+
+注意事项：
+
+- `openclaw-agent-gateway-tls` 只用于用户浏览器到 nginx 的 HTTPS。nginx 到真实 E2B 上游的证书校验仍使用平台内置的 `e2b-ca-cert`。
+- 证书域名必须和 `AGENT_GATEWAY_DOMAIN` 的 Host 一致。切到 HTTPS 域名后，直接访问 SLB IP 会因为 Host 不匹配被网关拒绝。
+- 当前模板没有 `AgentGatewayDomain` 参数。手动 patch 的 `AGENT_GATEWAY_DOMAIN` 属于运维配置，后续 ROS 栈更新可能写回默认 `http://<AgentGatewaySlb IP>:8080`，需要按需重新 patch。
+
+#### 调整 nginx 网关模板参数
+
+Agent 访问网关的 nginx 配置由服务版本中的 `openresty.conf.template` 生成。网关 Pod 启动时，`start-openresty.sh` 会把 `__DNS_RESOLVER__`、`__PLATFORM_API__`、`__PLATFORM_LOGIN_URL__`、`__TLS_LISTEN__`、`__TLS_CERTIFICATE__` 等占位符渲染成最终的 `/usr/local/openresty/nginx/conf/nginx.conf`。
+
+常见可调参数：
+
+| 配置 | 默认值 | 作用 | 什么时候调整 |
+|------|--------|------|--------------|
+| `worker_processes` | `auto` | nginx worker 数量，默认跟随容器 CPU 自动设置。 | 一般不需要调整；需要固定 worker 数量时可改为具体数字。 |
+| `worker_connections` | `4096` | 每个 worker 可同时处理的连接数，影响并发 HTTP/WebSocket 连接能力。 | 并发访问或长连接较多时可继续调大；同时要确认 Pod CPU、内存和系统连接数限制足够。 |
+| `client_max_body_size` | `1024m` | 单个请求允许的最大 body，影响文件上传或大请求。 | 上传大文件被 nginx 返回 413 时调大；希望限制上传大小时调小。 |
+| `client_body_buffer_size` | `1024k` | 请求 body 在内存中的缓冲大小。 | 大请求频繁落临时文件或上传性能不佳时可调大；内存紧张时可调小。 |
+| `large_client_header_buffers` | `4 1024k` | 大请求头缓冲，影响较长 Cookie、Authorization 或回调 URL。 | 出现 400、`Request Header Or Cookie Too Large` 时可调大；正常不建议继续放大。 |
+| `limit_req_zone agent_gateway_auth` | `5r/s` | 限制同一客户端调用 `/__agent_gateway_auth` 的频率。 | 大量用户同时从平台打开 Agent 时可适当调大，并同步评估 Manager 内部鉴权接口负载。 |
+| `limit_req_zone agent_gateway_health` | `10r/s` | 限制健康检查接口频率。 | 外部探测或 SLB 健康检查更频繁时可调大。 |
+| `proxy_request_buffering` | `off` | 代理请求不先完整缓存，便于流式请求和长连接场景。 | 通常不要改；只有明确希望 nginx 先缓存完整请求体时才开启。 |
+| `proxy_read_timeout` / `proxy_send_timeout` | `3600s` | nginx 与真实 Agent 上游之间的读写超时时间。 | Agent 页面存在长时间运行、SSE 或 WebSocket 场景时保持较大；希望更快释放无响应连接时调小。 |
+| `proxy_buffer_size` / `proxy_buffers` / `proxy_busy_buffers_size` | `1024k` / `8 1024k` / `1024k` | 上游响应头和响应内容缓冲。 | 响应头较大、页面内容注入或代理响应出现 buffer 相关错误时可调大；内存压力高时可调小。 |
+
+注意事项：
+
+- 不建议直接进入 Pod 修改 `/usr/local/openresty/nginx/conf/nginx.conf`，Pod 重启后会丢失，后续服务实例升级也可能覆盖临时改动。
+- 网关 Deployment 默认资源请求为 `1C / 1Gi`，资源上限为 `2C / 2Gi`。buffer、连接数或请求体限制调大后会增加内存占用，调整后建议观察 `openclaw-agent-gateway` Pod 的 CPU、内存、重启次数和 nginx 错误日志。
+
+#### 手动开启或关闭网关
+
+长期状态建议通过 ROS 栈参数 **启用 Agent 访问网关** 控制：
+
+| 操作 | 参数值 | 结果 |
+|------|------|------|
+| 开启 | `true` | 创建 Agent Gateway SLB 和 K8s 资源，平台默认写入 `http://<AgentGatewaySlb IP>:8080`。 |
+| 关闭 | `false` | 平台 `AGENT_GATEWAY_DOMAIN` 为空，新生成的 Agent 访问链接回到旧 E2B 直连。 |
+
+已经部署过网关时，也可以临时手动切换平台是否使用网关。该方式不会创建或删除网关资源，只影响平台后续生成的 Agent 访问链接。
+
+手动开启 HTTP/IP 网关：
+
+```bash
+NAMESPACE=openclaw-platform
+GATEWAY_IP="$(kubectl -n "$NAMESPACE" get svc openclaw-agent-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+  --type merge \
+  -p "{\"data\":{\"AGENT_GATEWAY_DOMAIN\":\"http://$GATEWAY_IP:8080\"}}"
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+```
+
+手动开启 HTTPS 域名网关：
+
+```bash
+NAMESPACE=openclaw-platform
+GATEWAY_DOMAIN=https://agents.example.com
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+  --type merge \
+  -p "{\"data\":{\"AGENT_GATEWAY_DOMAIN\":\"$GATEWAY_DOMAIN\"}}"
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+```
+
+手动关闭网关入口：
+
+```bash
+NAMESPACE=openclaw-platform
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+  --type merge \
+  -p '{"data":{"AGENT_GATEWAY_DOMAIN":""}}'
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+```
+
+手动关闭后，平台会重新返回旧 E2B 直连地址。如果此前已经通过安全组或 ACL 收口了真实 E2B 上游入口，需要同步放开旧入口，否则旧直连地址无法访问。
+
 ---
 
 ## 2. 平台概览
@@ -454,7 +672,7 @@ user3@example.com,,User3,user,5,saml
 
 在「单点登录」页面切换到 **SAML 标签页**，可配置企业 SAML 2.0 单点登录。配置完成后，用户登录页面（`/login`）会自动出现 **「企业 SSO 登录」** 按钮。
 
-> ⚠️ **注意：** 通过计算巢部署的 Supabase 当前版本暂不支持 SAML SSO 功能。如需使用 SAML SSO，请在部署完成后手动前往 [Supabase 控制台](https://supabase.China.com) 将 Supabase 实例升级到支持 SAML 的版本后，再进行以下配置。
+> ⚠️ **注意：** 阿里云托管 Supabase 需确认实例版本支持 SAML SSO。如使用开源 Supabase 部署模板部署，模板会自动完成 SAML 私钥生成、Kong 路由 patch 和 SSO Provider 注册，无需手动操作。
 
 本节以**阿里云 IDaaS** 为例，说明完整的配置流程。其他 IdP（如 Azure AD、Okta 等）流程类似。
 
@@ -475,8 +693,8 @@ SAML SSO 配置区域包含以下几个部分：
 
 | 字段 | 说明 | 示例 |
 |------|------|------|
-| **Entity ID (Issuer)** | SP 实体标识 | `https://abc123.supabase.co/sso/saml/metadata` |
-| **ACS URL (Callback)** | 断言消费服务地址 | `https://abc123.supabase.co/sso/saml/acs` |
+| **Entity ID (Issuer)** | SP 实体标识 | `https://abc123.supabase.co/auth/v1/sso/saml/metadata` |
+| **ACS URL (Callback)** | 断言消费服务地址 | `https://abc123.supabase.co/auth/v1/sso/saml/acs` |
 
 **第二步：在阿里云 IDaaS 控制台创建 SAML 应用**
 
@@ -526,9 +744,21 @@ https://<instance>.aliyunidaas.com/api/v2/<app_id>/saml2/meta
 
 **第七步：设置回调地址**
 
-第七步与原来一样，在「回调地址配置」区域，将 **Site URL** 设置为你的 Agent Manager 应用地址（如 `https://your-app.example.com`），然后点击 **「保存」**。
+Site URL 决定 SSO 登录成功后跳转回 Agent Manager 的地址，必须设置为 Manager 公网访问地址（如 `https://your-app.example.com` 或 `http://<Manager-IP>:8080`）。
+
+- **阿里云托管 Supabase：** 在「回调地址配置」区域，将 **Site URL** 设置为 Manager 地址，点击 **「保存」**。
+- **开源 Supabase：** 界面保存不可用（API 返回 501），需通过 `kubectl` 手动设置 GoTrue 环境变量：
+
+```bash
+kubectl -n <supabase-namespace> set env deployment/supabase-supabase-auth \
+  GOTRUE_SITE_URL="http://<Manager-IP>:8080" \
+  GOTRUE_URI_ALLOW_LIST="http://<Manager-IP>:8080/"
+kubectl -n <supabase-namespace> rollout restart deployment/supabase-supabase-auth
+```
 
 > **重要：** 如果不设置 Site URL，SSO 登录成功后会跳转到 Supabase 默认页面，而不是你的应用。
+>
+> ⚠️ 开源 Supabase 通过 `kubectl set env` 设置的值在 Helm upgrade 时可能被覆盖，建议同步修改 Helm values 以持久化配置。
 
 **第八步：在 IDaaS 中授权用户**
 
@@ -543,6 +773,36 @@ https://<instance>.aliyunidaas.com/api/v2/<app_id>/saml2/meta
 #### 管理已配置的 SSO
 
 在 **「已配置的 SSO」** 表格中可以查看所有已添加的 SAML SSO 配置，包括域名、IdP Entity ID 和创建时间。点击右侧的删除按钮可以移除配置（需二次确认）。
+
+> 📖 完整的 Supabase Auth 配置参考（含 OAuth、SAML、站点 URL 等手动配置命令）请参阅 [Supabase Auth 手动配置指南](../design/1.0.3/supabase-auth-manual-config.md)。
+
+#### 4.3.3 邮箱认证配置
+
+**路径：** `/admin/email-auth`
+
+邮箱认证功能依赖 Supabase GoTrue 的 SMTP 邮件服务。开启后，用户修改密码时需要通过邮箱验证链接完成，而不是直接修改。
+
+页面展示当前 SMTP 服务状态（是否配置、SMTP 服务器地址、站点地址），并提供邮箱认证开关。**SMTP 未配置时开关不可用。**
+
+- **阿里云托管 Supabase：** 如果托管实例已配置 SMTP，可直接在界面开关邮箱认证。
+- **开源 Supabase：** 界面开关不可用（API 返回 501），需通过 `kubectl` 手动配置：
+
+```bash
+kubectl -n <supabase-namespace> set env deployment/supabase-supabase-auth \
+  GOTRUE_SMTP_HOST="smtp.example.com" \
+  GOTRUE_SMTP_PORT="465" \
+  GOTRUE_SMTP_USER="noreply@example.com" \
+  GOTRUE_SMTP_PASS="<smtp-password>" \
+  GOTRUE_SMTP_SENDER_NAME="Agent Manager" \
+  GOTRUE_SMTP_ADMIN_EMAIL="noreply@example.com" \
+  GOTRUE_MAILER_AUTOCONFIRM="false"
+
+kubectl -n <supabase-namespace> rollout restart deployment/supabase-supabase-auth
+```
+
+配置完成后，界面会自动检测到 SMTP 已配置和邮箱认证已开启状态，密码修改功能会走邮件验证流程。
+
+> ⚠️ 开源 Supabase 通过 `kubectl set env` 设置的值在 Helm upgrade 时可能被覆盖，建议同步修改 Helm values 以持久化配置。
 
 ### 4.4 Agent 配置
 
@@ -894,7 +1154,7 @@ spec:
       containers:
         - name: agent-manager-openclaw
           # image 会在创建时被动态覆盖
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:v0.0.2
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/agent-manager-openclaw-test:v0.0.2
           securityContext:
             readOnlyRootFilesystem: false
             runAsUser: 0
