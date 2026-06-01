@@ -93,89 +93,41 @@ PY
 }
 
 # ---------------------------------------------------------------------------
-# modify-channel: upsert a specific channel's env vars in /opt/data/.env.
+# modify-channel: upsert channel credentials in /opt/data/.env.
 #
-# IMPORTANT: different channels use DIFFERENT env var names — there is NO
-# generic "<PREFIX>_CLIENT_ID / <PREFIX>_CLIENT_SECRET" convention:
-#   - dingtalk : DINGTALK_CLIENT_ID / DINGTALK_CLIENT_SECRET
-#   - feishu   : FEISHU_APP_ID / FEISHU_APP_SECRET        (reserved, not yet supported)
-#   - wecom    : (TBD, reserved)
-#   - qq       : (TBD, reserved)
-#
-# So each supported channel declares its own (id_var, secret_var) pair
-# explicitly. Hermes currently supports ONLY dingtalk; any other channel_type
-# is rejected until the corresponding variable names are confirmed.
-#
-# On every call we:
-#   1. purge ALL env var names known to belong to ANY channel (so switching
-#      channels doesn't leave the previous channel's credentials behind);
-#   2. append the two target env vars for the requested channel.
+# Single-channel mode: only one channel is active at a time, so we write ALL
+# channel env vars with the same client_id / client_secret (matching the
+# startup_command template). Hermes will only connect to the channel whose
+# credentials are actually valid; the other silently fails auth and stays off.
 # ---------------------------------------------------------------------------
 cmd_modify_channel() {
     local channel_type="${1:-}"
     local client_id="${2:-}"
     local client_secret="${3:-}"
 
-    if [ -z "$channel_type" ]; then
-        echo "Error: channel_type is required" >&2
+    if [ -z "$channel_type" ] || [ -z "$client_id" ] || [ -z "$client_secret" ]; then
+        echo "Error: channel_type, client_id, and client_secret are all required" >&2
         echo "Usage: run-cmd.sh modify-channel <channel_type> <client_id> <client_secret>" >&2
         exit 1
     fi
-
-    # Declare per-channel env variable names here. To add a new channel,
-    # add a case branch with its real (id_var, secret_var) names — do NOT
-    # fall back to generic "<PREFIX>_CLIENT_ID".
-    local id_var secret_var
-    case "$channel_type" in
-        dingtalk)
-            id_var="DINGTALK_CLIENT_ID"
-            secret_var="DINGTALK_CLIENT_SECRET"
-            ;;
-        feishu|wecom|qq)
-            echo "Error: channel '$channel_type' is not yet supported by Hermes" >&2
-            echo "Supported channels: dingtalk" >&2
-            exit 1
-            ;;
-        *)
-            echo "Error: unsupported channel_type: $channel_type" >&2
-            echo "Supported channels: dingtalk" >&2
-            exit 1
-            ;;
-    esac
 
     # Ensure .env file exists
     mkdir -p "$(dirname "$ENV_PATH")"
     [ -f "$ENV_PATH" ] || touch "$ENV_PATH"
 
-    # Pass secrets via env vars (avoid appearing in ps / bash history)
-    export _HERMES_CHANNEL_ID_VAR="$id_var"
-    export _HERMES_CHANNEL_SECRET_VAR="$secret_var"
-    export _HERMES_CHANNEL_ID_VALUE="$client_id"
-    export _HERMES_CHANNEL_SECRET_VALUE="$client_secret"
+    python3 - "$ENV_PATH" "$client_id" "$client_secret" <<'PY'
+import os, re, sys
 
-    python3 - "$ENV_PATH" <<'PY'
-import os
-import re
-import sys
+path, client_id, client_secret = sys.argv[1:4]
 
-path = sys.argv[1]
-id_var        = os.environ.get("_HERMES_CHANNEL_ID_VAR", "")
-secret_var    = os.environ.get("_HERMES_CHANNEL_SECRET_VAR", "")
-id_value      = os.environ.get("_HERMES_CHANNEL_ID_VALUE", "")
-secret_value  = os.environ.get("_HERMES_CHANNEL_SECRET_VALUE", "")
-
-if not id_var or not secret_var:
-    print("Error: channel env var names missing", file=sys.stderr)
-    sys.exit(1)
-
-# Complete registry of env var names owned by every (current or reserved)
-# channel. When switching channels we purge every line matching any of these
-# names so the old channel's credentials don't linger in .env.
-# Extend this list in lockstep with the `case` branches above.
-ALL_CHANNEL_VARS = {
-    "DINGTALK_CLIENT_ID", "DINGTALK_CLIENT_SECRET",
-    "FEISHU_APP_ID",      "FEISHU_APP_SECRET",
-    # "WECOM_..." and "QQ_..." to be added when those channels are wired up.
+# All channel vars to upsert (single-channel: same credentials for all)
+UPSERT = {
+    "DINGTALK_CLIENT_ID": client_id,
+    "DINGTALK_CLIENT_SECRET": client_secret,
+    "FEISHU_APP_ID": client_id,
+    "FEISHU_APP_SECRET": client_secret,
+    "FEISHU_CONNECTION_MODE": "websocket",
+    "FEISHU_DOMAIN": "feishu",
 }
 
 try:
@@ -184,27 +136,25 @@ try:
 except FileNotFoundError:
     lines = []
 
-name_alt = "|".join(re.escape(v) for v in ALL_CHANNEL_VARS)
-pattern = re.compile(r"^\s*(?:export\s+)?(" + name_alt + r")\s*=")
+# Remove existing channel lines, then append fresh values
+pattern = re.compile(
+    r"^\s*(?:export\s+)?(" + "|".join(re.escape(k) for k in UPSERT) + r")\s*="
+)
 kept = [ln for ln in lines if not pattern.match(ln)]
 
-# Ensure file ends with newline before appending
 if kept and not kept[-1].endswith("\n"):
-    kept[-1] = kept[-1] + "\n"
+    kept[-1] += "\n"
 
-kept.append(f"{id_var}={id_value}\n")
-kept.append(f"{secret_var}={secret_value}\n")
+for k, v in UPSERT.items():
+    kept.append(f"{k}={v}\n")
 
 tmp = path + ".tmp"
 with open(tmp, "w", encoding="utf-8") as f:
     f.writelines(kept)
 os.replace(tmp, path)
 
-print(f"Channel updated: {id_var} and {secret_var} set in {path}")
+print(f"Channel updated: all channel vars set (single-channel mode)")
 PY
-
-    unset _HERMES_CHANNEL_ID_VAR _HERMES_CHANNEL_SECRET_VAR \
-          _HERMES_CHANNEL_ID_VALUE _HERMES_CHANNEL_SECRET_VALUE
 }
 
 # ---------------------------------------------------------------------------
@@ -229,12 +179,9 @@ Usage:
       are preserved from the initial provisioning and never changed here.
 
   run-cmd.sh modify-channel <channel_type> <client_id> <client_secret>
-      Upsert the two env vars that the given channel uses in .env, and
-      remove any env vars belonging to the previously configured channel.
-      Supported channel_type: dingtalk
-        dingtalk → DINGTALK_CLIENT_ID / DINGTALK_CLIENT_SECRET
-        feishu / wecom / qq are reserved (will use their own var names, e.g.
-        FEISHU_APP_ID / FEISHU_APP_SECRET) but are not wired up yet.
+      Single-channel mode: upsert ALL channel env vars in .env with the
+      given credentials. Only the channel with valid credentials connects.
+      Supported channel_type: dingtalk, feishu
 
 Environment variables:
   HERMES_CONFIG_PATH  Path to config.yaml (default: /opt/data/config.yaml)

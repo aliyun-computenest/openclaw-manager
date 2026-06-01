@@ -39,7 +39,7 @@ spec:
       containers:
         - name: agent-manager-openclaw
           # image 会在创建时被动态覆盖
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:v0.0.2
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:2026.5.19
           securityContext:
             readOnlyRootFilesystem: false
             runAsUser: 0
@@ -56,6 +56,8 @@ spec:
             - name: OPENCLAW_CONFIG_DIR
               value: /home/node/.openclaw/openclaw.json
             # 显式置空 Kubernetes 注入的环境变量，避免 SDK 误以为运行在 Pod 内
+            - name: OPENCLAW_GATEWAY_TOKEN
+              value: xxx
             - name: KUBERNETES_SERVICE_PORT_HTTPS
               value: ""
             - name: KUBERNETES_SERVICE_PORT

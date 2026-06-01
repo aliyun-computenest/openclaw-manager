@@ -43,7 +43,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: agent-manager-hermes
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-hermes-test:v0.0.2
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-hermes-test:2026.5.16
           imagePullPolicy: IfNotPresent
           command:
             - supervisord

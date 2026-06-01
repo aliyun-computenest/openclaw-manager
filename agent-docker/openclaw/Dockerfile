@@ -1,4 +1,4 @@
-FROM registry-cn-shanghai.ack.aliyuncs.com/ack-demo/openclaw:2026.3.23-2
+FROM ghcr.io/openclaw/openclaw:2026.5.19
 
 # Switch to root to install plugins
 USER root
@@ -23,10 +23,10 @@ RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
 #       and to keep builds reproducible (avoid version drift from @latest).
 RUN mkdir -p /home/node/.openclaw/extensions && \
     cd /home/node/.openclaw/extensions && \
-    npm pack @wecom/wecom-openclaw-plugin@2026.3.30 && \
-    npm pack @tencent-connect/openclaw-qqbot@1.6.7 && \
-    npm pack @larksuite/openclaw-lark@2026.3.30 && \
-    npm pack @dingtalk-real-ai/dingtalk-connector@0.8.10
+    npm pack @wecom/wecom-openclaw-plugin@2026.5.14 && \
+    npm pack @tencent-connect/openclaw-qqbot@1.7.1 && \
+    npm pack @larksuite/openclaw-lark@2026.5.13 && \
+    npm pack @dingtalk-real-ai/dingtalk-connector@0.8.21
 
 # Extract and install dependencies for each plugin
 RUN cd /home/node/.openclaw/extensions && \
@@ -36,9 +36,14 @@ RUN cd /home/node/.openclaw/extensions && \
         if [ -f "$dir/package.json" ]; then cd $dir && npm install --production && cd ..; fi; \
     done
 
+# Expose the OpenClaw host package (/app, name="openclaw") to plugin extensions so that
+# ESM bare specifiers like `import "openclaw/plugin-sdk/core"` used by newer plugin
+# versions (e.g. dingtalk-connector >= 0.8.21) can be resolved by Node.js. Without this
+# symlink the plugin fails to register with: Cannot find module 'openclaw/plugin-sdk/core'.
+RUN mkdir -p /home/node/.openclaw/node_modules && \
+    ln -sfn /app /home/node/.openclaw/node_modules/openclaw
+
 # Fix ownership: openclaw runs as 'node' user and needs write access to /home/node/.openclaw
 RUN chown -R node:node /home/node/.openclaw
 
 ENTRYPOINT ["supervisord", "-n"]
-
-
