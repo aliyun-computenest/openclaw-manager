@@ -662,7 +662,7 @@ The IM message channel template isolated by agent type supports flying books, Di
 
 ##### Skill Configuration Tab
 
-Set the SkillHub registry address associated with the Agent type. Default is 'https://clawhub.ai/',Agent实例会连接到SkillHub查找和调用可用的技能 。
+Set the SkillHub registry address associated with the Agent type.
 
 #### 4.4.3 Sandbox Mirror Specification
 
