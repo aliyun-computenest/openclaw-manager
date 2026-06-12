@@ -1,19 +1,21 @@
 # Agent Manager function documentation
 
 Agent Manager is an enterprise-class AI intelligence management platform that provides complete AI intelligence creation, configuration, and management capabilities. The platform supports multiple agent types (such as OpenClaw, Hermes, etc.), and supports multi-model access and multi-channel integration to help enterprises quickly build and manage various AI agents.
-https://github.com/aliyun-computenest/agent-manager.git
+> Open source project address: https://github.com/aliyun-computenest/agent-manager.git
+
 ---
 
 ## 1. Computing Nest Deployment
 
-> This chapter describes how to deploy the Agent Manager management platform (including the Supabase backend database) on an existing ACS cluster through the Alibaba Cloud Computing Nest (ComputeNest).
+> This chapter describes how to deploy the Agent Manager management platform on an existing ACS cluster through the Alibaba Cloud Computing Nest (ComputeNest). The platform supports two Supabase deployment modes: **Alibaba Cloud managed Supabase** (automatically created) and **access to existing open source Supabase**.
 
 
 ### 1.1 Preconditions
 
-Before deploying the Agent Manager management platform, you must deploy **OpenClaw-ACS-Sandbox Cluster Edition**. If it has not been deployed, go to the computing nest to create a Sandbox cluster instance:
+Before deploying the Agent Manager management platform, you must deploy **OpenClaw-ACS-Sandbox Cluster Edition**. If it has not been deployed, go to the computing nest of the corresponding site to create a Sandbox cluster instance:
 
-👉[Create OpenClaw-ACS-Sandbox Cluster Edition Instance](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-56531b838b524f5a83da)
+-Domestic Station: [Create OpenClaw-ACS-Sandbox Cluster Edition Instance](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-56531b838b524f5a83da)
+-International Station: [Create OpenClaw-ACS-Sandbox Cluster Edition Instance](https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&ServiceId=service-731298a621304868a3a4)
 
 ### 1.2 deployment steps
 
@@ -34,6 +36,14 @@ Complete each configuration as described below:
 | **E2B Sandbox Service Instance** | Yes | Enter the ID of the **compute nest service instance** of the deployed OpenClaw-ACS-Sandbox cluster edition. |
 | **Platform Namespace** | No | The namespace of the management platform in the K8s cluster. The default value is 'agent-platform. Generally, it does not need to be modified. |
 
+#### Agent Access Gateway Configuration
+
+| Parameter | Required | Default | Description |
+| ------ | ------ | -------- | -------- |
+| **Enable Agent Access Gateway** | No | On | After it is enabled, the newly generated Agent access link on the platform will be verified by the nginx gateway to verify the login status and instance ownership of the platform, and then forwarded to the real Agent. After closing, continue to use the old E2B direct connection address. |
+
+When enabled, the template creates an Agent Gateway SLB. The **Agent Access Gateway** address is displayed in the output of the service instance. By default, http://<AgentGatewaySlb IP>:8080/<Instance ID>/'is used as the "Application Access Link" of the new agent/'. This switch only protects the newly generated access links on the platform and does not automatically change the real E2B upstream portal on the Sandbox cluster side. After confirming that the gateway access is available, if you need to completely prevent bypass, configure the security group, ACL, or equivalent network policy according to the public or internal network exposure method of the real portal.
+
 #### Supabase database configuration
 
 | Parameter | Required | Default | Description |
@@ -52,7 +62,7 @@ Complete each configuration as described below:
 
 **Step 3: Confirm information and create**
 
-![Confirm the deployment information-check the parameters and click "create now"](images-en/img_1.png)
+![Confirm the deployment information-check the parameters and click "create now"](images-en/img_13.png)
 
 1. Verify that all configuration parameters are correct
 2. Check **" I have read and agree to the Computing Nest Service Agreement "**
@@ -65,7 +75,88 @@ The deployment process takes about 5-10 minutes, during which the system will au
 -Deploy the management platform application in the ACS cluster
 -Configure ALB Ingress load balancing
 
-### 1.3 deployment verification
+### 1.2.1 Deployment with Existing Open Source Supabase
+
+On the **Supabase Deployment Mode**('SupabaseDeploymentMode') page, select **'UseExistingOpenSource'** to access the deployed open source Supabase, instead of automatically creating an Alibaba Cloud managed instance by the compute nest. **Applicable to scenarios such as compatibility verification and migration testing.** Not recommended for production environments **.
+
+#### Required Parameters
+
+| Parameter | Required | Description |
+|------|------|------|
+| * * ExistingSupabaseUrl * * | Yes | There is already a Supabase public network URL for browsers to access, such as' http:// 8.153.101.22:8000 ',* * * Do not end with'/'|
+| **ExistingSupabaseInternalUrl** | Yes | Server access URL. When deploying in the same cluster, use the K8s Service address, such as 'http:// supabase-supabase-kong.<namespace>.svc:8000 '|
+| **ExistingSupabaseAnonKey** | Yes | From Supabase deployment output |
+| **ExistingSupabaseServiceRoleKey** | Yes | From Supabase deployment output |
+| **ExistingSupabaseDatabaseUrl** | Yes | Format: 'postgresql:// postgres:<url-encoded-password >@< host>:5432/postgres '. When deployed in the same cluster, host is usually supabase-supabase-db.<Supabase namespace>.svc' |
+
+In this mode, you do not need to specify parameters such as **Supabase zone, instance type, storage space, and VSwitch network segment**.
+
+>⚠️ **Responsibility boundary:** When an existing Supabase is used, the user is responsible for the availability, version upgrade, data backup, and security enhancement of the instance. The compute nest does not host the Supabase instance.
+
+### 1.2.2 Open Source Supabase Independent Deployment
+
+The open source Supabase deployment template ('supabase_template.yaml ') can independently deploy a set of open source Supabase to the ACS/ACK cluster. After deployment, enter the output value of the open source into the 'UseExistingOpenSource' parameter of the Manager template for access. This template is maintained independently and is not stored in the Agent Manager repository.
+
+#### Key parameters
+
+| Parameter | Description |
+|------|------|
+| **ClusterId** | Target ACS/ACK cluster ID |
+| **DeploymentNamespace** | Supabase deployment namespace |
+| **DashboardUsername** | Supabase Dashboard logon username |
+| **DashboardPassword** | Supabase Dashboard logon password |
+| **DbPassword** | PostgreSQL database password |
+| **JwtSecret** | JWT Signing Key |
+
+#### Auth configuration parameter
+
+| Parameter | Description |
+|------|------|
+| **OAuthProvider** | OAuth provider ('none' / 'github' / 'google' etc.) |
+| **OAuthClientId** | OAuth Client ID |
+| **OAuthClientSecret** | OAuth Client Secret |
+| **EnableSaml** | Whether to enable SAML SSO |
+| **SamlIdpMetadataUrl** | IdP Metadata URL |
+| **SamlDomain** | The email domain that triggers SSO |
+
+#### Template output value
+
+| Output | Description | Manager parameters |
+| ------ | ------ | ------------------ |
+| **SupabaseUrl** | Public address | 'ExistingSupabaseUrl' |
+| **AnonKey** | anon key | 'ExistingSupabaseAnonKey' |
+| **ServiceRoleKey** | service role key | 'ExistingSupabaseServiceRoleKey' |
+| **InternalUrl** | Cluster intranet | |
+| **DatabaseUrl** | Database connection address | |
+
+If 'getaddrinfo ENOTFOUND supabase-supabase-db .. svc' appears in the initialization log, it means that the Supabase deployment namespace is missing from the database Service domain name. Please confirm the Supabase 'DeploymentNamespace' first, and then change the database connection string to something like:
+
+'''text
+postgresql:// postgres:<url-encoded-password>@ supabase-supabase-db.<Supabase namespace>.svc:5432/postgres
+'''
+
+Be careful not to keep empty namespaces such as '.. svc'; If the password contains special characters such as' @ ','#','%', URL encoding is required first.
+
+#### New Cluster Deployment
+
+If you have not created an ACK cluster, you can use the New Cluster Edition Supabase to deploy the template (''). The template automatically creates an ACK cluster and deploys the Supabase. This template is maintained independently and is not stored in the Agent Manager repository.
+
+In addition to the above Supabase and Auth configuration parameters, you also need to fill in:
+
+| Parameter | Description |
+|------|------|
+| **PayType** | Payment Type: Pay-As-You-Go (PostPaid) or Pay-As-You-Go (PrePaid) |
+| **ZoneId** | Zone |
+| **VpcOption** | Create or use an existing VPC |
+| **WorkerInstanceType** | Worker node instance type |
+| **WorkerInstanceCount** | Number of Worker nodes. Default value: 3 |
+| **LoginPassword** | Node logon password |
+| **AckNetworkPlugin** | Network plug-in: flannel or terway |
+| **ServiceCidr** | Service CIDR segment |
+
+The template output is consistent with the existing cluster version and can be directly used in the Manager 'UseExistingOpenSource' mode.
+
+### 1.3 Deployment Verification
 
 After the deployment is complete, you can obtain the access address of the management platform on the service instance details page of the computing nest console. Open the access address and see the login page of the Agent Manager, indicating that the deployment is successful.
 
@@ -76,15 +167,328 @@ After the deployment is complete, you can obtain the access address of the manag
 | Problem | Possible Cause | Solution |
 |------|----------|----------|
 | Deployment fails, indicating a CIDR block conflict | Supabase the VSwitch and the existing CIDR block overlap in the VPC | View the existing CIDR block in the VPC console and replace it with a CIDR block that does not conflict with each other. |
-| Deployment timeout | Supabase instance creation takes a long time | View the deployment event log in the Compute Nest console, wait or retry |
+| Deployment timeout | The creation of the Supabase instance takes a long time. | View the deployment event log in the computing nest console, wait or retry. |
 | The platform page cannot be accessed | The ALB Ingress is not ready yet | Wait for 1-2 minutes and try again, or check the status of Ingress resources in the ACS cluster |
 | Database Connection Failed After Login | Supabase Instance Not Fully Ready | Wait for Supabase Instance Status to Change to Running and Retry |
+| Site URL saved and returned 501 | Open source Supabase is used | Open source GoTrue does not support '/modify/settings' API, please use 'kubectl set env' to manually configure GOTRUE_SITE_URL |
+| mailbox authentication switch returns 501 | open source Supabase is used | open source GoTrue does not support modification' mailer_autoconfirm ', please use' kubectl set env' to configure SMTP and' GOTRUE_MAILER_AUTOCONFIRM = false', see [4.3.3 mailbox authentication configuration](#433-mailbox authentication configuration) |
 
 ### 1.5 Service Instance Upgrade
 1. Go to the supbase console to manually back up the database.
-2. Create a backup![img_2.png](images-en/img_2.png)
-3. Return to the computing nest service instance interface and select the appropriate version to upgrade the service instance.![img_3.png](images-en/img_3.png)
+2. Create a backup![img_2.png](images-en/img_14.png)
+3. Return to the computing nest service instance interface and select the appropriate version to upgrade the service instance.![img_3.png](images-en/img_15.png)
 4. Verify that the service instance is upgraded successfully
+
+#### Network Policy Considerations
+
+The workload added by the upgrade may not be matched by the existing GlobalTrafficPolicy in the cluster, and you need to manually modify the selector of the policy. For more information, see [1.6 GlobalTrafficPolicy network policy configuration](#16-globaltrafficpolicy-network policy configuration).
+
+### 1.6 GlobalTrafficPolicy network policy configuration
+
+By default, the 'GlobalTrafficPolicy' resource exists in the cluster. You can use 'spec.selector.matchLabels' to select the pod and apply network isolation rules to it. **If network isolation is required for SandboxSet deployed Agent Pods, ensure that the selector of the policy matches the label of the corresponding Pod.**
+
+The selector of the default policy may be inconsistent with the pod label actually used by the project (for example, the agent-manager-openclaw workload is added). In this case, you need to manually modify the default policy in the cluster.
+
+>📖For the complete concept and usage of the GlobalTrafficPolicy, please refer to the official document: [Use TrafficPolicy to manage Agent network access](https://help.aliyun.com/zh/cs/user-guide/use-trafficpolicy-to-manage-agent-network-access-1)
+
+#### Revised steps
+
+1. Edit the GlobalTrafficPolicy resource in the cluster:
+
+bash
+kubectl edit globaltrafficpolicy openclaw-global-policy
+'''
+
+2. Modify 'spec.selector.matchLabels' to match the actual Pod label:
+
+yaml
+spec:
+selector:
+matchLabels:
+app: agent-manager-openclaw
+'''
+
+3. Save the exit policy automatically takes effect.
+
+#### How to configure when adding a workload
+
+When a workload is added and network isolation is required, it is also necessary to ensure that the GlobalTrafficPolicy selector can be matched to the new pod:
+
+-**Same Network Rule**-Modify the 'spec.selector.matchLabels' of the existing policy to match the label of the new pod
+-**Different network rules**-Create a new GlobalTrafficPolicy resource and configure independent selector and rules
+
+Please refer to [Official Documents](https://help.aliyun.com/zh/cs/user-guide/use-trafficpolicy-to-manage-agent-network-access-1) for specific configuration methods.
+
+---
+
+### 1.7 Agent Access Gateway Certificates and Switches
+
+The Agent access gateway is used to protect Agent Web pages. When the user clicks the "application access link" from the platform, the browser first enters the nginx gateway, and the gateway verifies the current login status and instance ownership before acting to the real agent.
+
+#### Default behavior
+
+| Scene | Behavior |
+|------|------|
+| Keep the default parameters for new deployment or upgrade. | The agent Gateway SLB is automatically created. The access link for newly generated agents on the platform is' http://<AgentGatewaySlb IP>:8080/<instance ID>/'. |
+| When deploying, disable **Enable Agent to access the gateway** | If no gateway resource is created, the platform will continue to return the old E2B directly connected IP address. |
+| The gateway has been enabled but no certificate has been configured. | An HTTP/IP gateway portal is used with platform authentication, but the link is not encrypted. |
+| The gateway has been enabled and a certificate has been configured. | Use the HTTPS domain name gateway entry in the format of 'https:// <domain name>/<instance ID>/'. |
+
+#### Prevent Agent from Bypassing Gateway Access
+
+Enabling **Agent Access Gateway** only allows the newly generated access links to go through the Nginx gateway, and does not automatically change the real E2B upstream entrance of the Sandbox cluster. Whether there is a bypass risk depends on the network exposure method of the real portal, not on whether the certificate is self-signed, nor on whether the public network DNS is open.
+
+| Real E2B Upstream Entry | Bypass Risk | Recommended Handling |
+| -------------- | ---------- | -------------- |
+| Intranet ALB, intranet SLB, or portal reachable only within VPC | Public network users cannot directly connect even if 'hosts' is configured, because 'hosts' can only change the resolution and cannot open the network. The main risk comes from users with VPC, VPN, office network, or springboard access capabilities. | Restrict a security group, ALB/SLB ACL, Ingress whitelist, GlobalTrafficPolicy, NetworkPolicy, or equivalent policy to be accessible only to the Agent Gateway and the necessary platform services. |
+| Public network ALB or public network SLB | has a bypass risk. Even if the E2B domain does not have a public network DNS or the upstream certificate is a self-issued certificate, the user may still directly connect to the real upstream through the public network ALB address plus 'Host'/SNI, 'hosts', or 'curl -- resolve. | Don't rely on self-signed certificates or undisclosed DNS as a security perimeter. The priority is changed to the intranet portal. If the public network portal must be reserved, please use ACL, security group, WAF/Ingress authentication or equivalent policies to allow only the egress access of the Agent Gateway. |
+
+When it is necessary to completely prevent bypassing, it is processed in the following order:
+
+1. Make sure that the gateway access address generated by the platform is available. Common paths such as Agent pages, WebSocket/terminals, and file uploads can be accessed through 'http://<AgentGatewaySlb IP>:8080/<instance ID>/'or custom HTTPS gateway domain name.
+2. On the Sandbox cluster side, confirm the type of the real E2B upstream portal: intranet ALB/private network portal or public network ALB/public network portal. At the same time, confirm the corresponding security group, ACL, Ingress, or network policy.
+3. If it is a real intranet portal, confirm that the portal cannot be reached in a common public network environment. Then, access the intranet access range and only allow Agent Gateway and necessary platform services to access it.
+4. If it is a real public network entrance, do not use self-signed certificates or non-public DNS as isolation methods first; The source should be restricted through security groups, ALB/SLB ACL, WAF/Ingress authentication or equivalent policies, and only the exit access of Agent Gateway should be allowed.
+5. Verify the closing effect: the "application access link" of the platform can still be opened; When directly access' https:// <port>-<sandbox_id>.<E2B_DOMAIN>/'in a common public network environment or designating' Host'/SNI through a public network ALB address to access the real upstream, it should be rejected, timed out or unable to establish a connection.
+
+Do not block the outbound access of the Agent Gateway to the upstream of the real E2B during closing, otherwise the platform link will also return 502. If you disable **Enable Agent Access Gateway** and return to the old direct connection mode, you need to release the real E2B upstream portal simultaneously.
+
+> Replace 'NAMESPACE' in the following command with the platform namespace. The new template defaults to openclaw-platform; if the namespace was modified at deployment, use the actual value.
+
+#### Configure the nginx HTTPS certificate
+
+1. Obtain the public IP of the gateway SLB and resolve the domain name to be used to this IP.
+
+bash
+NAMESPACE=openclaw-platform
+GATEWAY_IP="$(kubectl -n "$NAMESPACE" get svc openclaw-agent-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+echo "$GATEWAY_IP"
+'''
+
+2. After the certificate is issued with the domain name, create or update the fixed name TLS Secret in the platform namespace.
+
+bash
+NAMESPACE=openclaw-platform
+kubectl -n "$NAMESPACE" create secret tls openclaw-agent-gateway-tls \
+--cert=/path/to/fullchain.pem \
+--key=/path/to/tls.key \
+--dry-run=client -o yaml | kubectl apply -f-
+'''
+
+3. Restart the Agent Gateway and let nginx read the certificate and enable 443 listening.
+
+bash
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-agent-gateway
+kubectl -n "$NAMESPACE" rollout status deployment/openclaw-agent-gateway --timeout=300s
+'''
+
+4. Cut the agent access link generated by the platform to the HTTPS domain name and restart the platform.
+
+bash
+GATEWAY_DOMAIN = https://agents.example.com
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+--type merge \
+-p "{\"data\":{\"AGENT_GATEWAY_DOMAIN\":\"$GATEWAY_DOMAIN\"}}"
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+kubectl -n "$NAMESPACE" rollout status deployment/openclaw-platform --timeout=300s
+'''
+
+5. Verify the gateway health check.
+
+bash
+curl -I https://agents.example.com/__agent_gateway_health
+'''
+
+Precautions:
+
+-'openclaw-agent-gateway-tls is only used for HTTPS from the user's browser to nginx. The certificate verification from nginx to the real E2B upstream still uses the platform's built-in e2b-ca-cert '.
+-The certificate domain name must be the same as the Host of the AGENT_GATEWAY_DOMAIN. After the HTTPS domain name is cut, direct access to the SLB IP will be denied by the gateway because the host does not match.
+-The current template does not have an 'AgentGatewayDomain' parameter. The "AGENT_GATEWAY_DOMAIN" of manual patch belongs to operation and maintenance configuration. Subsequent ROS stack updates may be written back to the default' http://<AgentGatewaySlb IP>:8080 ', and patch needs to be re-patched as needed.
+
+#### Troubleshoot Agent Access Gateway 502
+
+If the instance is successfully created, but the gateway returns a 502 after clicking Application Access Link, first distinguish the two connections:
+
+| | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| ------ | ---------- | ---------- | ------ | ---------- |
+| Browser → Agent Access Gateway | 'http://<AgentGatewaySlb IP>:8080/<Instance ID>/'or' https://agents.example.com/<Instance ID>/'| The openclaw-agent-gateway-tls is read only when an HTTPS domain name gateway is used | When an HTTP/IP gateway is used, a certificate is not required for this section. |
+| Agent access gateway → real E2B upstream | 'https:// <port>-<sandbox_id>.<E2B_DOMAIN>/'| Always use e2b-ca-cert to verify the real E2B upstream certificate | Even if the browser to the gateway is HTTP/IP, this section is still HTTPS. |
+
+Therefore, after the **Enable Agent Access Gateway** is disabled, the instance can be accessed. This only indicates that the old E2B directly connected portal is available. It cannot prove that the e2b-ca-cert is correct, because the old direct connection entry bypasses the certificate verification of nginx to E2B upstream.
+
+The success of creating an instance does not alone prove that the e2b-ca-cert is correct. The platform backend calls the E2B API when creating a Sandbox. The gateway accesses the Web upstream of each Sandbox when opening an instance. The two links may use different hostnames, certificate chains, and TLS validation implementations.
+
+A typical certificate chain problem log is as follows:
+
+'''text
+upstream SSL certificate verify error: (2:unable to get issuer certificate) while SSL handshaking to upstream
+'''
+
+This type of log indicates that nginx has obtained the real E2B upstream address and started the TLS handshake, but cannot verify the upstream certificate chain with the current e2b-ca-cert. It is different from the Sandbox unready problem. The more common logs that Sandbox not ready are 'connect() failed', 'connection refused', 'timed out', or 'host not found '.
+
+A CA chain that can validate a true E2B upstream certificate should be placed in the e2b-ca-cert instead of the following:
+
+| What should not be put in | Why is there a problem |
+| ---------------- | ---------------- |
+| 'openclaw-agent-gateway-tls' | This is the external certificate from the browser to Nginx. It has nothing to do with the trust chain from Nginx to the upstream of E2B. |
+| leaf certificate of 'CA:FALSE' | leaf certificate only proves a specific domain name and cannot be used as a CA to issue and verify Sandbox other upstream certificates. |
+| The old sandbox-manager-tls certificate | After the E2B side-change certificate or domain name, the old certificate cannot verify the current upstream. |
+| Contains only the server certificate and does not contain the file that issues the CA. | Nginx cannot find the issuer and returns 'unable to get issuer certificate '. |
+
+If E2B upstream uses a public CA certificate, browser direct connection may be normal, because the browser and operating system have a built-in public CA trust library. However, nginx currently only checks the upstream according to the e2b-ca-cert configuration. At this point, it is necessary for the e2b-ca-cert to contain the CA chain that can verify the public certificate.
+
+Do these steps to identify the problem. The 'NAMESPACE' in the following command is the platform namespace, and the new template is openclaw-platform by default '.
+
+1. Review the 502 reason in the gateway log.
+
+bash
+NAMESPACE=openclaw-platform
+kubectl -n "$NAMESPACE" logs deployment/openclaw-agent-gateway --since=10m | \
+grep -E 'upstream|certificate|502|connect\(\)|timed out|host not found'
+'''
+
+2. View the "e2b-ca-cert" actually mounted on the gateway '.
+
+bash
+kubectl -n "$NAMESPACE" exec deployment/openclaw-agent-gateway -- \
+sh -c 'ls -l /etc/openclaw-agent-gateway/e2b-ca && \
+openssl x509 -in /etc/openclaw-agent-gateway/e2b-ca/ca-fullchain.pem \
+-noout -fingerprint -sha256 -subject -issuer -dates -ext basicConstraints'
+'''
+
+If 'CA:FALSE' appears in the output, the current file is more like a leaf certificate and is not suitable for the upstream trust CA of nginx.
+
+3. Compare the E2B source certificate with the platform built-in certificate.
+
+bash
+kubectl -n sandbox-system get secret sandbox-manager-tls \
+-o jsonpath='{.data.tls\.crt}' | base64 -d > /tmp/sandbox-manager-tls.crt
+
+kubectl -n "$NAMESPACE" get secret e2b-ca-cert \
+-o jsonpath='{.data.ca-fullchain\.pem}' | base64 -d > /tmp/platform-e2b-ca.pem
+
+openssl x509 -in /tmp/sandbox-manager-tls.crt \
+-noout -fingerprint -sha256 -subject -issuer -dates -ext basicConstraints
+openssl x509 -in /tmp/platform-e2b-ca.pem \
+-noout -fingerprint -sha256 -subject -issuer -dates -ext basicConstraints
+'''
+
+4. Verify the real E2B upstream directly from the gateway pod.
+
+First get the sandbox_id, Agent Web port, and E2B_DOMAIN from the instance details or platform API '. Then execute:
+
+bash
+UPSTREAM_HOST = "<port>-<sandbox_id>.<E2B_DOMAIN>"
+
+kubectl -n "$NAMESPACE" exec deployment/openclaw-agent-gateway -- \
+openssl s_client \
+-connect "$UPSTREAM_HOST:443 "\
+-servername "$UPSTREAM_HOST "\
+-CAfile /etc/openclaw-agent-gateway/e2b-ca/ca-fullchain.pem \
+-verify_return_error
+'''
+
+If this command fails and 'curl -k' is used to access the same upstream, the service itself is reachable, and the problem focuses on the nginx certificate trust chain.
+
+When it is fixed, update the e2b-ca-cert to the correct CA chain and restart the gateway. Do not continue to copy 'CA:FALSE' leaf certificates without validation.
+
+If the 'tls.crt' of sandbox-system/sandbox-manager-tls confirms that the CA chain upstream of E2B can be verified, it can be synchronized from this secret:
+
+bash
+NAMESPACE=openclaw-platform
+CERT="$(kubectl -n sandbox-system get secret sandbox-manager-tls -o jsonpath='{.data.tls\.crt}')"
+
+kubectl -n "$NAMESPACE" patch secret e2b-ca-cert \
+-p "{\"data\":{\"ca-fullchain.pem\":\"$CERT\"}}"
+
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-agent-gateway
+kubectl -n "$NAMESPACE" rollout status deployment/openclaw-agent-gateway --timeout=300s
+'''
+
+If sandbox-manager-tls.tls.crt is the leaf certificate of CA:FALSE', use the CA chain file that actually issues the E2B upstream certificate instead:
+
+bash
+NAMESPACE=openclaw-platform
+CA_FILE=/path/to/e2b-upstream-ca-chain.pem
+
+kubectl -n "$NAMESPACE" create secret generic e2b-ca-cert \
+--from-file=ca-fullchain.pem="$CA_FILE "\
+--dry-run=client -o yaml | kubectl apply -f-
+
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-agent-gateway
+kubectl -n "$NAMESPACE" rollout status deployment/openclaw-agent-gateway --timeout=300s
+'''
+
+If the E2B upstream actually uses a public CA certificate, do not continue to copy the old private leaf certificate. A CA chain that can validate the public certificate should be used as the ca-fullchain.pem '.
+
+#### Adjust nginx gateway template parameters
+
+The nginx configuration of the agent access gateway is generated by the 'openresty.conf.template' in the service version. When the gateway pod starts, the start-openresty.sh renders placeholders such as '__DNS_RESOLVER__', '__PLATFORM_API__', '__PLATFORM_LOGIN_URL__', '__TLS_LISTEN__', and '__TLS_CERTIFICATE__' into the final '/usr/local/openresty/nginx/conf/nginx.conf'.
+
+Common tunable parameters:
+
+| Configure | Default | Action | When to adjust |
+| ------ | -------- | ------ | -------------- |
+| 'worker_processes '| 'auto' | The number of nginx workers. By default, this parameter is automatically set along with the container CPU. | Generally, no adjustment is required. When a fixed number of workers is required, it can be changed to a specific number. |
+| 'worker_connections '| '4096' | The number of simultaneous connections that each worker can process. Concurrent HTTP/WebSocket connections are affected. | You can continue to increase the number of concurrent accesses or long connections. At the same time, make sure that the Pod CPU, memory, and system connection limits are sufficient. |
+| 'client_max_body_size' | '1024m' | The maximum body allowed for a single request, which affects file uploads or large requests. | when nginx returns 413 for uploading large files, it will be increased. If you want to limit the upload size, it will be reduced. |
+| 'client_body_buffer_size '| '1024k' | The buffer size of the request body in memory. | When large requests frequently drop temporary files or upload performance is poor, it can be adjusted larger; When memory is tight, it can be adjusted smaller. |
+| large_client_header_buffers '| '4 1024k' | Large request header buffer, affecting long cookies, Authorization, or callback URLs. | When the 400 and 'Request Header Or Cookie Too Large' appear, the value can be adjusted to be larger. Normally, it is not recommended to continue to zoom in. |
+| 'limit_req_zone agent_gateway_auth '| '5r/s' | Limit the frequency of calls to'/__agent_gateway_auth 'by the same client. | When a large number of users open the Agent from the platform at the same time, you can increase the value appropriately and evaluate the load of the Manager internal authentication interface simultaneously. |
+| 'limit_req_zone agent_gateway_health '| '10r/s' | Limit the frequency of health check interfaces. | Adjustable when external probes or SLB health checks are more frequent. |
+| 'proxy_request_buffering' | 'off' | Proxy requests are not completely cached first, which is convenient for streaming requests and long connection scenarios. | usually do not change; It is only turned on when nginx is explicitly expected to cache the complete request body first. |
+| 'proxy_read_timeout' / 'proxy_send_timeout' | '3600s' | The read/write timeout between nginx and the real agent upstream. The | Agent page remains large when there are long-running, SSE, or WebSocket scenarios; reduce it when you want to release unresponsive connections faster. |
+| proxy_buffer_size ' / ' proxy_buffers ' / ' proxy_busy_buffers_size '| '1024k' / '8 1024k' / '1024k' | Upstream response header and response content buffer. | When the response header is large, the page content is injected or the agent response has buffer-related errors, it can be adjusted large; When the memory pressure is high, it can be adjusted small. |
+
+Precautions:
+
+-You are not recommended to modify '/usr/local/openresty/nginx/conf/nginx.conf' directly into the pod. The pod will be lost after the pod is restarted, and subsequent service instance upgrades may also overwrite temporary changes.
+-The default resource request for the gateway Deployment is '1C / 1Gi' and the upper resource limit is '2C / 2Gi '. Increasing the buffer, number of connections, or request body limit will increase the memory usage. After adjustment, we recommend that you observe the CPU, memory, restart times, and nginx error logs of the openclaw-agent-gateway pod.
+
+#### Manually turn the gateway on or off
+
+We recommend that you use the ROS stack parameter **to enable Agent Access Gateway** to control the long-term status:
+
+| Operation | Parameter values | Result |
+|------|------|------|
+| Enable | 'true' | Create SLB and K8s resources Gateway the Agent. By default, the platform writes to 'http://<AgentGatewaySlb IP>:8080 '. |
+| Disable | 'false' | The platform AGENT_GATEWAY_DOMAIN is empty, and the newly generated Agent access link returns to the old E2B direct link. |
+
+If a gateway has been deployed, you can temporarily manually switch whether the platform uses a gateway. This method does not create or delete gateway resources, but only affects the subsequent Agent access links generated by the platform.
+
+To manually turn on the HTTP/IP gateway:
+
+bash
+NAMESPACE=openclaw-platform
+GATEWAY_IP="$(kubectl -n "$NAMESPACE" get svc openclaw-agent-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+--type merge \
+-p "{\"data\":{\"AGENT_GATEWAY_DOMAIN\":\"http://$GATEWAY_IP:8080\"}}"
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+'''
+
+Manually turn on the HTTPS domain name gateway:
+
+bash
+NAMESPACE=openclaw-platform
+GATEWAY_DOMAIN = https://agents.example.com
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+--type merge \
+-p "{\"data\":{\"AGENT_GATEWAY_DOMAIN\":\"$GATEWAY_DOMAIN\"}}"
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+'''
+
+Manually close the gateway portal:
+
+bash
+NAMESPACE=openclaw-platform
+kubectl -n "$NAMESPACE" patch configmap openclaw-platform-config \
+--type merge \
+-p '{"data":{"AGENT_GATEWAY_DOMAIN":""}}'
+kubectl -n "$NAMESPACE" rollout restart deployment/openclaw-platform
+'''
+
+After the manual shutdown, the platform will return to the old E2B direct address. If the real E2B upstream portal has been connected through the security group or ACL, the old portal needs to be released simultaneously, otherwise the old direct connection address cannot be accessed.
 
 ---
 
@@ -114,7 +518,7 @@ The homepage is divided into three areas:
 The platform has two roles:
 
 | Role | Permission Scope |
-| ------ | ---------- |
+|------|----------|
 | **administrator (admin)** | can access all the functions of the management background: dashboard, user management, agent configuration, sandbox configuration, model configuration, instance management (all users) |
 | **Common user** | You can only access the User Center: View, create, and manage your own Agent instances, configure models and channels |
 
@@ -128,7 +532,7 @@ The platform provides two login portals, respectively for administrators and ord
 
 The administrator uses the mailbox password to log in, and the entrance is separated from the ordinary user.
 
-**Operating Steps:**
+**Operation steps:**
 
 1. Click the **" Administrator "** button in the upper right corner of the homepage, or directly visit '/admin/login'
 2. Enter the administrator mailbox and password
@@ -140,13 +544,76 @@ After successful login, it will automatically jump to the management background 
 
 > **Initial administrator account:** During the first deployment, the system automatically creates an administrator account through the database migration script. The default mailbox is usually admin@agent.local and the password is 'admin123 '. **Please change your password immediately after logging in for the first time!**
 
+#### Reset when administrator password is forgotten
+
+If you forget the administrator password and cannot log in through the platform page, you can use the Supabase 'service_role key' to call the Auth Admin API to reset the password. service_role key has high permissions to bypass row-level permission control. Please use it only in trusted terminals. Do not write documents, work orders, chat records, or front-end code.
+
+**Prerequisites:**
+
+-Supabase access address has been obtained, such as 'https://spb-xxx.supabase.opentrust.net'
+-got Supabase 'service_role key '. When using open source Supabase deployment, you can obtain the value from the 'ServiceRoleKey' in the Supabase deployment output. When using the computing nest hosting Supabase, you can find the corresponding value from the service instance output or deployment parameters.
+-'jq' installed locally'
+-Confirmed administrator mailbox to be reset. The default is usually admin@agent.local, replace with the actual value if you are using admin@openclaw.local or other mailboxes in your environment.
+
+**Step 1: List the user and find the administrator ID**
+
+bash
+SUPABASE_URL = "https://spb-xxx.supabase.opentrust.net"
+SERVICE_ROLE_KEY = "<your SERVICE_ROLE_KEY>"
+ADMIN_EMAIL = "admin@agent.local"
+
+USER_ID = "$(
+curl -sS \
+-H "apikey: ${SERVICE_ROLE_KEY} "\
+-H "Authorization: Bearer ${SERVICE_ROLE_KEY} "\
+"${SUPABASE_URL}/auth/v1/admin/users "\
+| jq -r --arg email "$ADMIN_EMAIL" '.users[] | select(.email == $email) | .id'
+)"
+
+echo "$USER_ID"
+
+if [ -z "$USER_ID" ] || [ "$USER_ID" = "null" ]; then
+echo "Administrator user not found, please check ADMIN_EMAIL"
+exit 1
+fi
+'''
+
+If the output is empty, please confirm whether the ADMIN_EMAIL is the actual administrator mailbox, or view the user mailbox list first:
+
+bash
+curl -sS \
+-H "apikey: ${SERVICE_ROLE_KEY} "\
+-H "Authorization: Bearer ${SERVICE_ROLE_KEY} "\
+"${SUPABASE_URL}/auth/v1/admin/users "\
+| jq -r '.users[].email'
+'''
+
+**Step 2: Reset Password with Administrator ID**
+
+bash
+NEW_PASSWORD = "<your new password>"
+
+curl -sS -X PUT \
+-H "apikey: ${SERVICE_ROLE_KEY} "\
+-H "Authorization: Bearer ${SERVICE_ROLE_KEY} "\
+-H "Content-Type: application/json"
+-d "$(jq -nc --arg password "$NEW_PASSWORD" '{password: $password}') "\
+"${SUPABASE_URL}/auth/v1/admin/users/${USER_ID}"
+'''
+
+After the reset is complete, use the ADMIN_EMAIL and NEW_PASSWORD to revisit the/admin/login' login to the admin background. After confirming that the login is successful, it is recommended to clear the sensitive variables in the current terminal:
+
+bash
+unset SERVICE_ROLE_KEY NEW_PASSWORD USER_ID
+'''
+
 At the bottom of the page, a link is provided to quickly switch to the user login portal.
 
 ### 3.2 User Login
 
 Common users can log on to the following three ways: **Email password logon**, **OAuth third-party logon**, and **SAML SSO enterprise logon**.
 
-**Operating Steps:**
+**Operation steps:**
 
 1. Click the **Login** button or the **User Login** button on the homepage to go to '/login'
 2. Select the login method as required:
@@ -160,7 +627,7 @@ The layout of the login page from top to bottom is: OAuth button area → SSO bu
 
 > **Mailbox password login instructions:** The user's mailbox and password are created by the administrator in User Management. When the administrator adds a user, select the "mailbox password" authentication method and set the initial password, the user can use the mailbox and password to log in. For details, see [4.2 User Management → Add User](#42-User Management).
 
-After successful logon, the instance list in the User Center is automatically redisplayed. The **Administrator Login** link is also available at the bottom of the page.
+After successful logon, the instance list in the User Center is automatically redeployed. The **Administrator Login** link is also available at the bottom of the page.
 
 ---
 
@@ -208,8 +675,8 @@ After the AI gateway and SLS logs are enabled, three additional cards are displa
 
 | Indicator | Icon | Description |
 |------|------|------|
-| **Active Users Today** |📊| Number of users with API calls today |
-| **Number of requests today** |🔄| Total API calls today |
+| **Active users today** |📊| Number of users with API calls today |
+| **Number of requests today** |🔄| Total API Calls Today |
 | **Token usage today** |🔑| Total token consumption of all users today (formatted display, such as 1.2M) |
 
 #### Recent Agent Instance (Middle)
@@ -247,7 +714,7 @@ If a AI gateway has been configured, the **AI Gateway Console** blue button appe
 
 **Path:** '/admin/users'
 
-The user management page is used to manage all users of the platform and supports operations such as single addition, batch import, editing, and disabling.
+The user management page is used to manage all users of the platform and supports operations such as adding, batch importing, editing, and disabling.
 
 #### User List
 
@@ -314,7 +781,7 @@ Click the **Edit** icon on the right side of the user row to modify the followin
 
 -User Name
 -Mailbox
--Role (administrator/normal user)
+-Role (Administrator/General User)
 -Status (enabled/disabled)
 -Maximum number of instances
 
@@ -329,20 +796,36 @@ The single sign-on configuration page consolidates OAuth and SAML SSO configurat
 -**Top Switch Area**-Displays the currently enabled SSO mode (OAuth/SAML/Not Enabled), which can be switched
 -**OAuth tab**-View and manage OAuth login providers
 -**SAML SSO tab**-Configure enterprise SAML 2.0 SSO
+-**Security Settings**-You can turn off automatic user registration with one click to prevent unauthorized users from automatically creating accounts when they log on for the first time through SSO.
+
+#### Turn off automatic user registration
+
+For security reasons, it is recommended to turn off automatic user registration after user creation or batch import in the production environment. When turned off, OAuth or SAML SSO login for the first time does not automatically create new users; only users that have been created by an administrator or imported in bulk can login. Existing users are not affected.
+
+**Operation steps:**
+
+1. Enter * * management background → user management → single sign-on * *
+2. Find the **User Auto Registration** switch in the **Security Settings** area of the page
+3. Click **Close Automatic Registration** and confirm as prompted on the page
+4. To allow new users to join by themselves, turn the switch back on.
+
+> Suggestion: In the enterprise production environment, you can batch import users who are allowed to log in in User Management, and then turn off automatic registration.
 
 #### 4.3.1 OAuth Configuration
 
 #### Supported OAuth Providers
 
-The platform supports all Supabase built-in OAuth providers, including but not limited:
+The platform supports Supabase OAuth providers that have been enabled in Auth and have been adapted to display on the login page, including:
 
 | Provider | Description |
-|--------|------|
+| -------- | ------ |
 | **Alibaba Cloud (AlibabaCloud)** | Use an Alibaba Cloud RAM account to log on |
+| **Feishu (Feishu)** | Login with Feishu Enterprise Account |
+| **DingTalk (DingTalk)** | Log in with a DingTalk enterprise account |
 | **GitHub** | Log in with a GitHub account |
 | **Google** | Sign in with your Google account |
 | **Azure AD** | Sign in with Microsoft Azure AD |
-| **GitLab** | Log in with a GitLab account |
+| **GitLab** | Login with a GitLab account |
 | **Apple** | Sign in with your Apple ID |
 | **Discord / Slack / Twitter / ...** | 20 OAuth providers supported by other Supabase are available |
 
@@ -396,12 +879,57 @@ The configuration process of other OAuth providers is exactly the same, but the 
 
 | provider | address for creating application | callback address to be filled in |
 | -------- | ------------- | ------------- |
+| **Flying Book** | [Flying Book Open Platform](https://open.feishu.cn/) → Developer Backstage → Create Enterprise Self-built Application under Customer Enterprise | 'https://<Supabase URL>/auth/v1/callback' |
+| **DingTalk** | [DingTalk Open Platform](https://open.dingtalk.com/) → Application Development → Create Internal Application | 'https://<Supabase URL>/auth/v1/callback' |
 | **GitHub** | [GitHub Developer Settings](https://github.com/settings/developers) → New OAuth App | 'https://<Supabase URL>/auth/v1/callback' |
 | **Google** | [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials | 'https://<Supabase URL>/auth/v1/callback' |
 | **Azure AD** | [Azure Portal](https://portal.azure.com/) → App registrations | 'https://<Supabase URL>/auth/v1/callback' |
 | **GitLab** | [GitLab Applications](https://gitlab.com/-/profile/applications) | 'https://<Supabase URL>/auth/v1/callback' |
 
 Regardless of the provider, **callback address always fills in the Supabase callback URL**, which is uniform.
+
+#### Flying Book OAuth Application Configuration
+
+1. The flying book administrator of the customer enterprise or the developer who has been granted the application creation permission logs into the developer background of [Flying Book Open Platform](https://open.feishu.cn/) to create or enter the self-built application under the customer enterprise.
+2. Record the **App ID** and **App Secret** on the **Credentials and Basic Information** page of the application.
+3. Add the redirect URL in the **Security Settings** of the app:
+'''
+https://<Supabase URL>/auth/v1/callback
+'''
+4. Apply for and enable the following permissions in **Permissions Management**:
+
+| Permissions | Scope | Purpose |
+| ------ | ------- | ------ |
+| Obtain basic user information | 'contact:user.base:readonly' | Obtain basic information such as user name and avatar after logging in |
+| Obtain user mailbox information | 'contact:user.email:readonly' | Obtain user mailbox after logon |
+| Obtain employment information of a user | 'contact:user.employee:readonly' | Obtain employment information of an employee after logging in |
+| | Obtain the enterprise mailbox field | 'directory:employee.base.enterprise_email:read' | Read the enterprise_email enterprise mailbox after logon to avoid displaying only the ou_xxx@feishu.user placeholder mailbox |
+
+5. Publish applications or complete administrator authorization according to the requirements of the flying book open platform.
+6. Go back to the Supabase **Authentication → Providers**, enable **Feishu**, and fill in the App ID and App Secret.
+7. Return to Agent Manager * * Management Background → User Management → Single Sign-on → OAuth Tab Page * *, click * * Refresh * *, and confirm that the flying book is displayed as enabled.
+
+> Enterprise self-built applications should be created under the customer's own flying book enterprise. The flying book management background is mainly used to grant developers application creation/management permissions, configure application available scope, and maintain enterprise mailbox domain names and employee enterprise mailboxes. The App ID, App Secret, callback address and API permissions of OAuth application are configured in the background of developers on the flying book open platform.
+>
+> if the flying book user does not configure the enterprise mailbox, or the application does not open the' contact:user.employee:readonly' and' directory:employee.base.enterprise_email:read', the platform cannot get' enterprise_email, the login data may still show the placeholder mailbox generated by flying book. It is suggested to use OAuth to log in after filling up the enterprise mailbox for employees in the background of book management.
+
+#### DingTalk OAuth application configuration
+
+1. Log in to [DingTalk Open Platform](https://open.dingtalk.com/) to create or access internal applications.
+2. On the **Credentials and Basic Information** page of the application, record the **Client ID** and **Client Secret**.
+3. Add the redirect URL in the app's login or callback address configuration:
+'''
+https://<Supabase URL>/auth/v1/callback
+'''
+4. Apply for and enable the following permissions in **Permissions Management**:
+
+| Permissions | Scope | Purpose |
+| ------ | ------- | ------ |
+| Address Book Personal Information Read Permission | 'Contact. User.Read' | Obtain the address book personal information of the current DingTalk user after logging in |
+
+5. Publish applications or complete administrator authorization according to the requirements of the DingTalk open platform.
+6. Return to the Supabase **Authentication → Providers**, enable **DingTalk**, and enter the Client ID and Client Secret.
+7. Return to the Agent Manager **Management Backstage → User Management → Single Sign-On → OAuth Tab**, click **Refresh**, and confirm that the DingTalk is displayed as Enabled.
 
 #### OAuth configuration page function
 
@@ -413,7 +941,7 @@ Regardless of the provider, **callback address always fills in the Supabase call
 
 On the Single Sign-On page, switch to the **SAML tab** to configure enterprise SAML 2.0 single sign-on. After the configuration is complete, the Enterprise SSO Login button appears automatically on the user login page ('/login').
 
->⚠️ **Note:** The current version of the Supabase deployed through the compute nest does not support the SAML SSO feature. To use SAML SSO, after the deployment is complete, manually go to [Supabase Console](https://supabase.China.com) to upgrade the Supabase instance to a version that supports SAML, and then configure the following.
+>⚠️ **Note:** Alibaba Cloud managed Supabase must confirm that the instance version supports SAML SSO. If the open source Supabase deployment template is used for deployment, the template will automatically complete SAML private key generation, Kong route patch and SSO Provider registration without manual operation.
 
 This section uses **Alibaba Cloud IDaaS** as an example to describe the complete configuration process. Other IdPs (such as Azure AD, Okta, and so on) process similarly.
 
@@ -421,7 +949,7 @@ This section uses **Alibaba Cloud IDaaS** as an example to describe the complete
 
 The SAML SSO configuration area contains the following sections:
 
-1. **SP Information (Configured to IdP)**-The information that the Supabase is displayed as an SP(Service Provider) must be copied to the IdP side
+1. **SP Information (Configured to IdP)**-The information of the Supabase as the SP(Service Provider) must be copied to the IdP
 2. **Callback Address Configuration**-Set the Site URL to be used after SSO login is completed.
 3. **Configured SSO**-View and manage added SAML SSO configurations
 4. **Add SAML SSO**-Add SSO configuration entry
@@ -434,8 +962,8 @@ Go to the **management background → user management → single sign-on → SAM
 
 | Field | Description | Example |
 |------|------|------|
-| **Entity ID (Issuer)** | SP Entity ID | 'https://abc123.supabase.co/sso/saml/metadata' |
-| **ACS URL (Callback)** | Assertion consumer address | 'https://abc123.supabase.co/sso/saml/acs' |
+| **Entity ID (Issuer)** | SP Entity ID | 'https://abc123.supabase.co/auth/v1/sso/saml/metadata' |
+| **ACS URL (Callback)** | Assertion consumer address | 'https://abc123.supabase.co/auth/v1/sso/saml/acs' |
 
 **Step 2: Create a SAML application in the Alibaba Cloud IDaaS console**
 
@@ -457,7 +985,7 @@ In the SAML configuration of the IDaaS application:
 In the **Attribute Declaration** configuration of the IDaaS application, add the following:
 
 | Property name | Expression |
-| -------- | -------- |
+|--------|--------|
 | 'email' | 'user.email' |
 
 **Step 5: Get the IDaaS Metadata URL**
@@ -485,9 +1013,21 @@ Return to the single sign-on SAML tab of the Agent Manager:
 
 **Step 7: Set callback address**
 
-Step 7: In the Callback Address Configuration area, set **Site URL** to the application address of your Agent Manager (for example, https://your-app.example.com), and then click **Save**.
+Site URL determines the address that redirects to the Agent Manager after successful SSO login. It must be set to the Manager public network access address (for example, https://your-app.example.com or http://<Manager-IP>:8080).
+
+-**Alibaba Cloud managed Supabase:** In the Callback Address Configuration area, set **Site URL** to the Manager address and click **Save**.
+-**Open source Supabase:** The interface is not available (API returns 501). You need to manually set the GoTrue environment variable through 'kubectl:
+
+bash
+kubectl -n <supabase-namespace> set env deployment/supabase-supabase-auth \
+GOTRUE_SITE_URL="http://<Manager-IP>:8080 "\
+GOTRUE_URI_ALLOW_LIST="http://<Manager-IP>:8080 /"
+kubectl -n <supabase-namespace> rollout restart deployment/supabase-supabase-auth
+'''
 
 > **Important:** If Site URL is not set, SSO will jump to the default page of the Supabase instead of your application after successful login.
+>
+>⚠The value set by open source Supabase through 'kubectl set env' may be overwritten during Helm upgrade. It is recommended to modify Helm values synchronously to persist the configuration.
 
 **Step 8: Authorize users in IDaaS**
 
@@ -501,7 +1041,37 @@ Open the user login page ('/login') and you should see the **" Enterprise SSO Lo
 
 #### Manage Configured SSO
 
-You can view all added SAML SSO configurations in the Configured SSO table, including the domain name, IdP Entity ID, and creation time. Click the Delete button on the right to remove the configuration (with a second confirmation).
+You can view all added SAML SSO configurations in the Configured SSO table, including the domain name, IdP Entity ID, and creation time. Click the Delete button on the right to remove the configuration (a second confirmation is required).
+
+>📖For a complete Supabase Auth configuration reference (including manual configuration commands such as OAuth, SAML, and site URL), see [Supabase Auth Manual Configuration Guide](../design/1.0.3/supabase-auth-manual-config.md).
+
+#### 4.3.3 Mailbox Authentication Configuration
+
+**Path:** '/admin/email-auth'
+
+The mailbox authentication feature relies on the SMTP mail service Supabase GoTrue. After opening, the user needs to modify the password through the mailbox verification link instead of directly modifying it.
+
+The page displays the current SMTP service status (whether it is configured, SMTP server address, and site address), and provides the mailbox authentication switch. **Switch is not available when SMTP is not configured.**
+
+-**Alibaba Cloud Managed Supabase:** If the managed instance is configured with SMTP, you can switch the mailbox authentication directly on the page.
+-**Open source Supabase:** The interface switch is not available (the API returns 501) and needs to be manually configured through 'kubectl:
+
+bash
+kubectl -n <supabase-namespace> set env deployment/supabase-supabase-auth \
+GOTRUE_SMTP_HOST = "smtp.example.com" \
+GOTRUE_SMTP_PORT = "465" \
+GOTRUE_SMTP_USER = "noreply@example.com" \
+GOTRUE_SMTP_PASS = "<smtp-password>" \
+GOTRUE_SMTP_SENDER_NAME="Agent Manager "\
+GOTRUE_SMTP_ADMIN_EMAIL = "noreply@example.com" \
+GOTRUE_MAILER_AUTOCONFIRM="false"
+
+kubectl -n <supabase-namespace> rollout restart deployment/supabase-supabase-auth
+'''
+
+After the configuration is completed, the interface will automatically detect that SMTP has been configured and mailbox authentication has been enabled, and the password modification function will go through the mail verification process.
+
+>⚠The value set by open source Supabase through 'kubectl set env' may be overwritten during Helm upgrade. It is recommended to modify Helm values synchronously to persist the configuration.
 
 ### 4.4 Agent Configuration
 
@@ -518,7 +1088,7 @@ The system has two built-in Agent types by default, and a corresponding SandboxS
 | **OpenClaw** | 'openclaw' | JSON | 'agent-manager-openclaw | AI intelligence based on OpenClaw framework, built-in Gateway, multi-channel integration |
 | **Hermes** | 'hermes' | YAML | 'hermes' | agent-manager-hermes | A AI agent based on the Hermes framework with rich personality presets and multi-platform toolsets.
 
-The list page uses a card-based layout. Each card displays the name, code, description, label (sandbox ID, support channel, configuration path), and activation status. The left colored border distinguishes between enabled (green)/disabled (gray). Supports enabling/disabling switching, editing (details page), and deleting (only custom types).
+The list page uses a card layout, and each card displays the name, code, description, label (sandbox ID, support channel, configuration path), and activation status. The left colored border distinguishes between enabled (green)/disabled (gray). Supports enabling/disabling switching, editing (details page), and deleting (only custom types).
 
 #### 4.4.2 Agent Configuration Details Page
 
@@ -551,7 +1121,7 @@ Configuration templates are the basis for generating instance configuration file
 The system replaces the **placeholder** (in the format of '${XXX}') in the template with the actual value at runtime before writing it to the sandbox. Common placeholders:
 
 | Placeholder | Source | Description |
-| -------- | ------ | ------ |
+|--------|------|------|
 | '${MODEL_NAME}' | Select when user creates an instance | Model code, such as 'qwen-max' |
 | '${MODEL_PROVIDER}' | User selected when creating an instance | Provider ID, such as 'bailian' |
 | '${DASHSCOPE_API_KEY}' | Refined Provider Configuration | Refined API Key |
@@ -563,7 +1133,7 @@ The system replaces the **placeholder** (in the format of '${XXX}') in the templ
 
 **OpenClaw Configuration Template Example (Compact)**:
 
-JSON
+json
 {
 "agents": {
 "defaults": {
@@ -571,25 +1141,25 @@ JSON
 "workspace": "/home/node/.openclaw/workspace"
 }
 },
-"models": {
-"mode": "merge",
-"providers": {
-"bailian": {
-"baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-"apiKey": "${DASHSCOPE_API_KEY}",
-"api": "openai-completions",
+"models ": {
+"mode": "merge ",
+"providers ": {
+"bailian ": {
+"baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1 ",
+"apiKey": "${DASHSCOPE_API_KEY} ",
+"api": "openai-completions ",
 "models": []
 },
 "api_gateway": {
 "baseUrl": "http://${AI_GATEWAY_DOMAIN}/v1 ",
 "apiKey": "${CONSUMER_API_KEY} ",
-"api": "openai-completions",
+"api": "openai-completions ",
 "models": []
 }
 }
 },
-"gateway": {
-"port": 18789,
+"gateway ": {
+"port": 18789
 "auth": { "mode": "token", "token": "${GATEWAY_TOKEN}"}
 }
 }
@@ -629,7 +1199,7 @@ discord: [hermes-discord]
 slack: [hermes-slack]
 code_execution: { timeout: 300, max_tool_calls: 50}
 '''
->⚠* * * When switching model providers: * * When you enable a model provider of the AI gateway class in "Model Configuration", for example, when enabling Alibaba Cloud AI Gateway or LiteLLM, you must switch to the corresponding configuration in the template, otherwise the model call will fail.
+>⚠* * * When switching model providers: * * When the model provider of the AI gateway class is enabled in "Model Configuration", for example, when the Alibaba Cloud AI Gateway or LiteLLM is enabled, you must switch to the corresponding configuration in the template, otherwise the model call will fail.
 
 > Hermes templates have built-in rich 'personalities' (such as 'kawaii', 'pirate', 'shakespeare', etc.) and multi-platform toolsets (Telegram, Discord, WhatsApp, Slack, Signal, HomeAssistant, etc.) that can be tailored on demand.
 
@@ -662,7 +1232,7 @@ The IM message channel template isolated by agent type supports flying books, Di
 
 ##### Skill Configuration Tab
 
-Set the SkillHub registry address associated with the Agent type.
+Set the SkillHub registry address associated with the Agent type. Default is 'https://clawhub.ai/',Agent实例会连接到SkillHub查找和调用可用的技能 。
 
 #### 4.4.3 Sandbox Mirror Specification
 
@@ -685,7 +1255,7 @@ SandboxSet.yaml# Built-in SandboxSet CRD
 Both Dockerfile follow the same **four-step build pattern** to ensure that the image can be taken over by the platform:
 
 | Procedure | Description | Specification Requirements |
-|------|------|----------|
+| ------ | ------ | ------ | ------ |
 | **1. Select official base image** | OpenClaw with '<tag>';Hermes with '<tag>' | Must be based on official/own agent runtime image, not from 'scratch' or minimalist |
 | **2. Install supervisor and tini** | 'apt install -y supervisor tini' | The platform uses 'supervisord -n' as PID = 1 to manage multiple processes, which cannot be omitted |
 | **3. Append process configuration** | 'cat supervisord.conf >> /etc/supervisor/supervisord.conf' | Register the Agent startup command as a supervisor program instead of 'ENTRYPOINT' |
@@ -714,13 +1284,13 @@ Key Specifications:
 -**'autorestart = true'** **'startreries =-1 '** This ensures that the Agent process can be automatically pulled up after a crash. This ensures that the Agent process is ready to be checked for fault recovery.
 -**'stopasgroup = true' 'killasgroup = true'** Ensure that child processes can be cleaned up when the sandbox is recycled.
 
-##### Steps to Access Own Agent
+##### Steps to Access Your Own Agent
 
 If you need to access your own Agent framework (such as Dify, AutoGen, and self-developed Agent), see the official Dockerfile to build your own image. **You must comply with the following specifications**:
 
 1. **Based on the Agent runtime image**-'FROM <your-agent-runtime >:< tag>', all dependencies of the Agent are pre-installed.
 2. **Installation supervisor** - 'apt install -y supervisor tini' to ensure that the image has multi-process management capabilities.
-3. **Write supervisord.conf**-Define '[program:<your-agent>]' according to the specification in the previous section, and the user/log path/restart policy are completely aligned with the built-in image.
+3. **Write supervisord.conf**-Define '[program:<your-agent>]' according to the specification in the above section, and the user/log path/restart policy are completely aligned with the built-in image.
 4. **The ENTRYPOINT is fixed as'supervisord-n'**-so that the platform can restart <program>'hot reload the new configuration through the'supervisorctl in the startup command.
 5. **Expose Health Check Port**-Enable an HTTP or TCP listening port for the ready check configuration of the Agent.
 6. **Enter SandboxSet.yaml**-For more information, see 'agent-docker/*/SandboxSet.yaml'. Modify fields such as 'metadata.name', 'image', 'ports', 'resources', and 'volumeMounts.
@@ -795,7 +1365,7 @@ The search box at the top supports searching by **name** or **namespace**. The *
 
 Click the View or Modify link next to the sandbox template ID in the list row or Agent configuration details page to go to the details page. The details page provides the **YAML editor** that completely SandboxSet the CRD. You can modify the image, number of replicas, environment variables, storage volumes, and other configurations online.
 
-Operation button:
+Operation buttons:
 
 -**Save**-Push the modified YAML to the cluster, equivalent to 'kubectl apply'
 -**Copy**-Copies the current YAML to the clipboard
@@ -815,6 +1385,111 @@ Click the **" New Sandbox Configuration "** button in the upper right corner of 
 
 After saving, the system will send the CRD to the cluster 'apply'. After successful creation, you can select it from the "sandbox template ID" drop-down of "agent configuration.
 
+#### 4.5.5 Deploying a Sandbox in a Custom namespace
+
+By default the SandboxSet is deployed at the 'default' namespace. **If you want to deploy the sandbox to other namespace (such as business isolation and multi-tenant scenarios)**, you can modify the SandboxSet YAML by referring to the following template and submit it through 'kubectl apply -f <file>.yaml:
+
+yaml
+apiVersion: agents.kruise.io/v1alpha1
+kind: SandboxSet
+metadata:
+name: agent-manager-openclaw
+namespace: default # ← Change to target namespace, such as agent-platform
+spec:
+persistentContents:
+-filesystem
+replicas: 1
+runtimes:
+-name: agent-runtime
+template:
+metadata:
+labels:
+app: agent-manager-openclaw
+alibabacloud.com/acs: "true"
+annotations:
+image.alibabacloud.com/enable-image-cache: "true"
+network.alibabacloud.com/network-policy-mode: "traffic-policy"
+network.alibabacloud.com/enable-network-policy-agent: "true"
+${sg-xxx} # ← Replace with the security group ID of the target VPC
+-${vsw-a },${vsw-B },${vsw-c}# Replace with the VSwitch ID of the destination zone
+spec:
+automountServiceAccountToken: false
+enableServiceLinks: false
+hostNetwork: false
+hostPID: false
+hostIPC: false
+shareProcessNamespace: false
+hostname: openclaw
+containers:
+-name: agent-manager-openclaw
+# image will be dynamically overwritten at creation time
+image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/agent-manager-openclaw-test:v0.0.2
+securityContext:
+readOnlyRootFilesystem: false
+runAsUser: 0
+runAsGroup: 0
+command: ["supervisord", "-n"]
+sports:
+-name: gateway
+containerPort: 18789
+protocol: TCP
+-name: runtime
+containerPort: 49983
+protocol: TCP
+env:
+-name: OPENCLAW_CONFIG_DIR
+value: /home/node/.openclaw/openclaw.json
+# Explicitly null the environment variables injected by the Kubernetes to prevent the SDK from mistakenly thinking that the pod is running.
+-name: KUBERNETES_SERVICE_PORT_HTTPS
+value: ""
+-name: KUBERNETES_SERVICE_PORT
+value: ""
+-name: KUBERNETES_PORT_443_TCP
+value: ""
+-name: KUBERNETES_PORT_443_TCP_PROTO
+value: ""
+-name: KUBERNETES_PORT_443_TCP_ADDR
+value: ""
+-name: KUBERNETES_SERVICE_HOST
+value: ""
+-name: KUBERNETES_PORT
+value: ""
+-name: KUBERNETES_PORT_443_TCP_PORT
+value: ""
+resources:
+requests:
+cpu: 2
+memory: 4Gi
+limits:
+cpu: 2
+memory: 4Gi
+startupProbe:
+exec:
+command:
+-node
+--e
+-"require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+initialDelaySeconds: 1
+periodSeconds: 2
+failureThreshold: 150
+'''
+
+**checklist of key modification points:**
+
+| Field | Description |
+|------|------|
+| 'metadata.namespace' | Change the target namespace to 'kubectl create namespace <name>'in advance |
+| '. | Replace with the security group ID of the target VPC (ensure that the security group passes through container ports '18789' and '49983') |
+| 'Replace with a list of VSwitch IDs in the target zone, separated by commas |
+| 'containers[].image' | The sandbox is actually dynamically overwritten by the platform when creating the sandbox, and the placeholder can be reserved in YAML. |
+| 'resources.requests/limits' | Adjust CPU/memory quotas based on the actual load of the Agent |
+| 'startupProbe' | The container-level startup probe. If you want to customize the health check port/path, you need to modify it synchronously. |
+
+>⚠️ **Cross-namespace considerations:**
+> 1. **Platform must have the RBAC permission to access the namespace**: Confirm that the ServiceAccount used by the Agent Manager backend has been bound to the Role/ClusterRole that can access the 'sandboxsets' and 'pods' resources in the target namespace.
+> 2. **Network reachability**: The switch CIDR block of the target namespace must communicate with the network where the Agent Manager platform is located.
+> 3. **Apply to Agent Configuration**: In Agent Configuration→Basic Configurations, enter the sandbox template ID as the newly SandboxSet 'metadata.name' (in this example, agent-manager-openclaw) so that the platform can be associated with this template.
+
 ---
 
 ### 4.6 Model Configuration
@@ -828,7 +1503,7 @@ The Model Configuration page is divided into **Model Provider area** in the uppe
 The platform divides providers into two broad categories:
 
 | Category | Description | Default support |
-|------|------|----------|
+| ------ | ------ | ------ | ------ |
 | **AI Gateway** | Called through the gateway unified proxy model, supports **Consumer management** (assigns an independent credential to each user), token statistics, and throttling | **Alibaba Cloud AI Gateway** · **LiteLLM** |
 | **Standard API** | Directly call the model vendor API and use the global API Key configured by the administrator | **Alibaba Cloud Refinement** |
 
@@ -838,7 +1513,7 @@ The platform divides providers into two broad categories:
 
 This is the simplest configuration method. You can call models such as Qwen directly through the Bailian API Key, which is suitable for quick verification or lightweight use.
 
-**Operating Steps:**
+**Operation steps:**
 
 1. Click on the "Refined" provider card
 2. In the **API Key** input box, enter the Refined API Key (obtained from the [Alibaba Cloud Refined Console](https://bailian.console.aliyun.com/)). The page displays the configuration placeholder prompt: '${DASHSCOPE_API_KEY}'. The API Key filled in will be used to replace this placeholder in the template
@@ -850,7 +1525,7 @@ This is the simplest configuration method. You can call models such as Qwen dire
 
 #### 4.6.3 Configure AI Gateway
 
-When a AI gateway provider creates an instance, **automatically assigns an independent consumer (Consumer) and access credential** to each user, facilitating budget control and auditing. platform built-in two kinds of AI gateway:
+When a AI gateway provider creates an instance, **automatically assigns an independent consumer (Consumer) and access credential** to each user, facilitating budget control and auditing. Two AI gateways are built into the platform:
 
 ##### Alibaba Cloud AI Gateway
 
@@ -860,16 +1535,16 @@ The AI Gateway capability of calling Alibaba Cloud API Gateway provides consumer
 
 [LiteLLM](https://www.litellm.ai/) is an open source Proxy Server that supports hundreds of models (OpenAI / Anthropic / Azure / Qwen/DeepSeek...) Output with a unified OpenAI compatible interface, built-in User / Key separation management, budget control and switching strategy.
 
-**Operating Steps:**
+**Operation steps:**
 
 1. Click the "LiteLLM Gateway" provider card to enter the configuration panel
 2. Fill in the core parameters:
 
 | Configuration Item | Required | Description |
-| -------- | ------ | ------ |
+|--------|------|------|
 | **Proxy URL** | Yes | Address of the LiteLLM proxy service, such as 'https://litellm.example.com' |
 | **Master Key** | is | the LiteLLM administrator key ('sk-...') used to automatically create users and access credentials. Encrypt storage on save |
-| **API Key Placeholder** | Yes | The default value is '${LITELLM_API_KEY}', which must be consistent with the placeholder **in the template/startup command** |
+| **API Key Placeholder** | Yes | The default '${LITELLM_API_KEY}' must match the placeholder **in the template/startup command**. **|
 | **Domain name placeholder** | Yes | The default '${LITELLM_PROXY_URL}' must match the placeholder **in the template/startup command**. **|
 | **Budget per user** | No | max_budget, maximum cumulative cost per user Key (USD) |
 | **Budget Cycle** | No | 'budget_duration, such as '30d', '7d' |
@@ -917,7 +1592,7 @@ Newly added models are enabled by default, and can be enabled/disabled via the s
 
 **Path:** '/admin/gateway'
 
-The AI gateway is a unified proxy layer that is AI invoked. In this system, the AI gateway is configured as a special model provider node, which supports advanced capabilities such as voucher allocation, token statistics, and flow restriction through the Alibaba Cloud AI gateway unified proxy AI model calls.
+The AI gateway is a unified proxy layer for AI invocation. In this system, the AI gateway is configured as a special model provider node, which supports advanced capabilities such as voucher allocation, token statistics, and flow restriction through the Alibaba Cloud AI gateway unified proxy AI model calls.
 
 > For more usage of AI Gateway, please refer to Alibaba Cloud documentation: https://help.aliyun.com/zh/api-gateway/ai-gateway/product-overview/what-is-an-ai-gateway
 
@@ -927,7 +1602,7 @@ Before configuring a AI gateway in the management platform, you need to create a
 
 **Step 1: Create a AI Gateway instance**
 
-1. Access the Alibaba Cloud AI Gateway console: 'https://apig.console.aliyun.com'
+1. Access the Alibaba Cloud AI Gateway console: https://apig.console.aliyun.com'
 2. Create a AI gateway instance in the corresponding region. The recommended configuration is as follows:
 
 | Configuration Item | Recommended Value | Description |
@@ -975,10 +1650,10 @@ Configure the DNS resolution of the domain name and transfer the business domain
 
 After the AI gateway on the Alibaba Cloud side is created, return to the management platform for associated configuration.
 
-**Operating Steps:**
+**Operation steps:**
 
-1. Go to the Model Configuration page and select the model provider you want to mark as a AI gateway (e. g. api_gateway)
-2. Check the **Mark as AI Gateway** checkbox and click **Enable Gateway**. The dedicated configuration panel of the AI gateway will be expanded.
+1. Go to the Model Configuration page and select the model provider that you want to mark as a AI gateway (e. g. api_gateway)
+2. Check the **Mark as AI Gateway** checkbox and click **Enable Gateway**. The dedicated configuration panel of AI gateway will be expanded.
 
 ![Tagged as AI Gateway](images-en/img_5.png)
 
@@ -1080,7 +1755,7 @@ Administrators can view and manage Agent instances created by **All Users**.
 -**User Filtering**-Filters instances by user name (only for administrators)
 -**Paging** -10 records per page, support page turning
 
-#### Table Column Description
+#### Table column description
 
 | Column name | Description |
 |------|------|
@@ -1096,7 +1771,104 @@ Administrators can view and manage Agent instances created by **All Users**.
 #### Administrator-specific actions
 
 -**View Pod**-If the ACS cluster ID is configured, you can directly go to the Alibaba Cloud Container Service console to view the pod details of the instance.
--**View Details**-On the Instance Details page, you can view additional information such as the instance user.
+-**View Details**-On the Instance Details page, you can view additional information such as instance users.
+
+---
+
+### 4.10 Group Management (Shared Agent Instance)
+
+**Path:** '/admin/groups'
+
+> Groups are used to **share Agent instances** among multiple users. After the platform administrator creates a group and adds users to the group, members in the group can jointly access, start, stop, and edit the same batch of Agent instances, which is suitable for team collaboration scenarios.
+
+#### 4.10.1 Grouping Function Overview
+
+-**Shared Attribution**: When creating an instance, you can select Private or a group. The instances belonging to the group are accessed by all members of the group. The quota is deducted from the group entity and does not occupy the creator's personal quota.
+-**Three-level role model**: Each group member has a role that determines its permissions in the group:
+
+| Roles | Permissions |
+|------|------|
+| **owner** | Manage members (add/remove/adjust roles), modify the group name, and delete any shared instances under the group. |
+| **admin (administrator)** | Manage members (add/remove/adjust admin and member), delete any shared instance under the group |
+| **member (ordinary member)** | View, start, stop, and edit the configuration of a group shared instance. You can only delete a shared instance created by yourself. |
+
+-**Restriction**: After the instance is created, **the group to which the instance belongs cannot be changed**. If you need to modify the instance, delete it and create it again.
+
+#### 4.10.2 Create Group (Administrator Action)
+
+Only platform administrators can create groups.
+
+**Operating Steps:**
+
+1. Go to **management background → group management**, click **" new group "** button in the upper right corner
+2. Fill in the pop-up window:
+
+| Field | Required | Description |
+|------|------|------|
+| **Group name** | is | 1-100 characters, unique in-platform case insensitive |
+| **Maximum number of instances** | No | The default value is 5.0 indicates that creating shared instances in this group is prohibited. |
+
+3. Click **Create**. The system automatically sets the current administrator as the **owner** of the group, and assigns model provider credentials to the group body (if the AI gateway is enabled).
+
+> If the credential allocation fails, the group will still be created successfully, but the API Key status in the group details will be displayed as 'missing'. You can try again after the credential is restored.
+
+#### 4.10.3 Add/Remove Group Members
+
+group owner, group admin, and platform administrator can manage group members.
+
+**Add members:**
+
+1. On the **Group Management** page, click the target group to go to the details page and switch to the **Members** tab.
+2. Click **Add Members** to fill in:
+
+| Field | Required | Description |
+|------|------|------|
+| **User Mailbox** | Yes | Must be a registered and enabled user mailbox |
+| **Role** | No | Default 'member'; optional 'admin';'owner' can only be set by platform administrators (for owner transfer) |
+
+3. Click **Save**. If the user was ever moved out of the group, membership is automatically restored and roles are updated.
+
+**Remove members:**
+
+1. Find the target member in the group member list, click the **Remove** button on the right, and the member status changes to 'removed' after the second confirmation'
+2. After removal, the member can no longer access any shared instances under the group (including the shared instances previously created in the group).
+3. * * owner cannot be removed directly * *: to remove owner, the platform administrator must first set the role of another member to 'owner' through the add member interface (automatically demote the old owner to admin in the same transaction), and then remove the original owner
+
+> Member removal only cuts off the backend access permission. **Group credentials injected into the running sandbox are not automatically revoked.**. If there are security compliance requirements, please delete/rebuild the shared instance or manually rotate the provider certificate processing.
+
+#### 4.10.4 Grouping Limit Configuration
+
+Group principals (principal) support the following three types of limits, independent of individual user limits:
+
+| Limit Type | Configuration Location | Description |
+|----------|----------|------|
+| **Maximum number of instances** | Create a group pop-up window/group details Edit | Maximum number of shared instances under a group; only the platform administrator can modify |
+| **Token Limit** | After the AI gateway is enabled, configure the token based on the group body in "Token Limit". | The token consumed by the group shared instance is included in the group body. You can set the daily/30-day limit independently. |
+| **Budget Limit** | When the LiteLLM Gateway is enabled, the group subject has a max_budget in the LiteLLM as an independent user. | Controls the maximum cumulative charge for the group. |
+
+> The token and fee of the shared instance are always included in the **group entity**, and are not repeatedly included in the creator's personal quota.
+
+#### 4.10.5 Delete Grouping
+
+Only platform administrators can delete groups, and the following preconditions must be met:
+
+| Preconditions | When not satisfied |
+|----------|----------|
+| There are no shared instances in the group. | Prompt to delete all shared instances first. |
+| There are no non-owner members in the active state | Prompt to remove all non-owner members first |
+| The provider voucher of the group subject has been revoked (or the provider does not require a voucher) | Prompt to revoke the voucher first |
+
+If the above conditions are met, click **" Delete Group "** on the group details page and confirm.
+
+#### 4.10.6 Using Shared Grouping on User Side
+
+After the normal user who is added to the group logs in:
+
+1. View the groups you have joined, current roles, and group quota usage on the **User Center → My Groups** page
+2. In the "Home" option on the **Create Instance** page, you can select "Private" or a group added by yourself
+3. Existing shared instances will appear in the instance list of group members at the same time, and can be started, stopped and configured normally. Delete permissions are determined according to the role model in 4.10.1 above.
+
+>⚠️ **Important note:** After the instance is created, **the attribution group cannot be changed**, nor can it be switched between private and shared. Please confirm the attribution before creating.
 
 ---
 
@@ -1170,7 +1942,7 @@ On creation, the system automatically completes the following:
 -if AI gateway is enabled, automatically create a AI gateway consumer for that user and assign access credentials
 -Start the Agent service
 
-Wait for the instance status to change to Running. After the instance is created, the instance details page is automatically redisplayed.
+Wait for the instance status to change to Running. After the instance is created, the instance details page is automatically redirected.
 
 #### Use Tips
 
@@ -1183,7 +1955,7 @@ At the bottom of the page is a blue tip card with the following suggestions:
 
 **Path:** '/user/instances/:id'
 
-The instance details page is divided into three card areas: basic information, model configuration, and channel configuration. At the top of the page, there is a Back to List link on the left and action buttons on the right.
+The instance details page contains basic information, model configuration, channel configuration, and access and terminal entries of the running instance. At the top of the page, there is a Back to List link on the left and action buttons on the right.
 
 #### Top operation button
 
@@ -1205,10 +1977,34 @@ The core information of the instance is displayed in a two-column grid:
 | **Status** | Green "Running" or gray "Stopped" badge |
 | **Creation Time** | Instance creation time (Chinese format) |
 | **Last Active** | The last active time of the instance. If not, None is displayed. |
-| **User** | The user name of the instance is displayed only in the administrator view. |
+| **Attributed User** | The user name of the instance is displayed only in the administrator view. |
 | **Application access link** | The access URL after the instance is running. The blue clickable link opens in a new window. |
 | **/etc/hosts configuration** | In the development mode, the code blocks with green characters on the black background need to be added to the local hosts file. |
-| **View Container** | Only in the administrator view, go to the Alibaba Cloud console to view the pod. |
+| **View Container** | Only the administrator view is displayed. Go to the Alibaba Cloud console to view the pod. |
+
+#### Open the application interface and terminal
+
+After the instance enters Running, the details page displays the application access link. Click the link or **" open in new window "** to open the Agent interface on a separate page. If the current Agent supports terminal login, the terminal will also be opened on the new access page to avoid refreshing or blocking the embedded area of the details page.
+
+**Operating Steps:**
+
+1. Open the instance details page and confirm that the instance status is Running 」
+2. Find the **Application Access Link** in the Basic Information Card
+3. Click the link or **" Open in new window "**
+4. Use the Agent interface or terminal in a new page
+
+#### Batch upload files
+
+On the instance access page that supports file upload, you can upload multiple files at a time to transfer local data, scripts, or configuration files to the instance running environment.
+
+**Operating Steps:**
+
+1. On the instance details page, click **Application Access Link** or **Open in New Window** to enter the instance access page.
+2. Click the **Upload File** entry on the page
+3. Select one or more files in the system file selector, or drag and drop multiple files to the upload area
+4. Wait for the upload completion prompt before closing the page
+
+> The time taken to upload large files or a large number of files is affected by the network and instance environment. Please wait for the page to confirm the completion of the upload before continuing the operation.
 
 #### Model Configuration Card
 
@@ -1241,7 +2037,7 @@ When an Agent instance is not needed, it can be paused to free up computing reso
 
 A suspended instance can be restarted at any time. After recovery, the configuration, data, and historical memory of the instance remain intact.
 
-1. On the Instance List page, locate the target instance with a status of Stopped
+1. On the Instance List page, locate a target instance with a status of Stopped
 2. Click the Start button (green) in the Actions bar
 3. The instance status will change to "Starting" and display "Running" when finished 」
 
@@ -1265,11 +2061,11 @@ The progress bar changes color according to usage: green (<70%), amber (70%-90%)
 ### Q1: Is there no login method available on the user login page?
 
 **A:** The user logon page always supports **email password logon** (bottom of the page) without additional configuration. If OAuth or SSO login is also required, the administrator needs to complete the configuration on the "User Management → Single Sign-on" page:
--**Configure OAuth**: Enable an OAuth provider (such as Alibaba Cloud) in Authentication → Providers of the Supabase console, create an OAuth application on the corresponding platform, and set the callback address to 'https://<Supabase URL>/auth/v1/callback '. For details, see [4.3.1 OAuth configuration](#431-oauth-configuration).
+-**Configure OAuth**: On the Authentication → Providers page of the Supabase console, enable an OAuth provider (such as Alibaba Cloud), create an OAuth application on the corresponding platform, and set the callback address to 'https://<Supabase URL>/auth/v1/callback '. For details, see [4.3.1 OAuth configuration](#431-oauth-configuration).
 -**or Configure SAML SSO**: Add enterprise SSO configuration on the SAML tab page of Single Sign-On. For details, see [4.3.2 SAML SSO Configuration](#432-saml-sso-Configuration).
 -**Note:** OAuth and SAML SSO are mutually exclusive configurations (one of two options).
 
-For mailbox password login, the administrator must first create an account for the user in User Management (select the mailbox password authentication method) before the user can log in using the mailbox and password.
+For mailbox password login, the administrator must first create an account for the user in User Management (select the mailbox password authentication method) before the user can log in with the mailbox and password.
 
 ### Q2: What if the instance creation fails?
 
@@ -1287,12 +2083,12 @@ For mailbox password login, the administrator must first create an account for t
 
 ### Q4: How do I access a running instance?
 
-**A:** After the instance is started, the Application Access Link is displayed on the instance details page 」. Click the link to open the Agent interface in a new window. If it is a development environment, the details page may display the '/etc/hosts' configuration, which needs to be added to the local hosts file before it can be accessed normally.
+**A:** After the instance is started, the Application Access Link is displayed on the instance details page 」. Clicking the link or Open in New Window opens the Agent's interface; if the current Agent supports terminal login, the terminal opens in a new access page. The instance access page that supports file upload can also select multiple file uploads at once. If it is a development environment, the details page may display the '/etc/hosts' configuration, which needs to be added to the local hosts file before it can be accessed normally.
 
 ### Q5: What AI models are supported?
 
 **A:** The platform itself does not limit the model type. Administrators can freely add model providers and models on the Model Configuration page. Common models include:
--Qwen Series (Tongyi Thousand Questions)
+-Qwen Series (Tongyi Qianxuan)
 -DeepSeek series
 -Other models compatible with OpenAI API format
 
@@ -1314,7 +2110,7 @@ For mailbox password login, the administrator must first create an account for t
 1. Log in to the Supabase console → Authentication → Providers
 2. Find the corresponding provider (such as AlibabaCloud) and turn on the Enable switch
 3. Enter the Client ID / Client Secret of the corresponding platform
-4. After saving, return to the Agent Manager "single sign on→OAuth tab" Click "refresh" to confirm the status
+4. After saving, return to the Agent Manager "single sign-on → OAuth tab" Click "refresh" to confirm the status
 5. Visit the user login page ('/login') again, and the corresponding login button should have appeared
 
 ### Q9: How to fill in the Alibaba Cloud OAuth callback address?
@@ -1322,7 +2118,7 @@ For mailbox password login, the administrator must first create an account for t
 **A:** When you create an OAuth application in the RAM console, enter the callback address (Redirect URI):
 
 '''
-https:// <your Supabase project URL>/auth/v1/callback
+https://<Your Supabase project URL>/auth/v1/callback
 '''
 
 For example 'https://abc123.supabase.co/auth/v1/callback '. Supabase automatically handles the callback logic for all OAuth providers, all of which use the same callback address.
@@ -1333,7 +2129,7 @@ For example 'https://abc123.supabase.co/auth/v1/callback '. Supabase automatical
 
 ### Q11: What agent types does the platform support?
 
-**A:** Platform provides two built-in Agent types: **OpenClaw**(JSON configuration) and **Hermes**(YAML configuration). The sandbox templates agent-manager-openclaw and agent-manager-hermes are automatically created in the cluster during deployment. In addition, the administrator can also add a type in "Agent Configuration" through "Copy from Template" or "Custom Create", and create a corresponding SandboxSet in "Sandbox Configuration" to support any Agent framework compatible with E2B sandbox.
+**A:** Platform provides two built-in Agent types: **OpenClaw**(JSON configuration) and **Hermes**(YAML configuration). The sandbox templates agent-manager-openclaw and agent-manager-hermes are automatically created in the cluster during deployment. In addition, the administrator can also add new types in "Agent Configuration" through "Copy from Template" or "Custom Create", and create corresponding SandboxSet in "Sandbox Configuration" to support any Agent framework compatible with E2B sandbox.
 
 ### Q12: Model call failed after adding model provider?
 
@@ -1343,6 +2139,34 @@ For example 'https://abc123.supabase.co/auth/v1/callback '. Supabase automatical
 
 **A:** The running instance uses the sandbox environment before modification. After editing and saving the SandboxSet YAML in the sandbox configuration, click Stop on the instance corresponding to the instance list and then Start to apply the new configuration.
 
+### Q14: What should I do if I want to deploy the sandbox to a non-'default' namespace?
+
+**A:** Refer to the SandboxSet YAML template provided by [4.5.5 Deploy Sandbox in Custom namespace](#455-Deploy Sandbox in Custom-namespace):
+1. Change 'metadata.namespace' to the target namespace (you need to namespace 'kubectl create <name>'in advance)
+2. Replace 'security-group-ids' and 'vswitch-ids' with the resource ID of the target VPC/Availability Zone
+3. 'kubectl apply -f <file>.yaml' Commit to cluster
+4. In "Agent Configuration→Basic Configuration", fill in "sandbox template ID" as the newly SandboxSet 'metadata.name'
+
+Note The Agent Manager backend ServiceAccount requires RBAC permissions for the target namespace.
+
+### Q15: The instance is created successfully, but the 502 is returned when the instance is opened through the agent access gateway?
+
+**A:** Look at the openclaw-agent-gateway log first. If the log contains:
+
+'''text
+upstream SSL certificate verify error: (2:unable to get issuer certificate)
+'''
+
+This is usually not a Sandbox creation failure or a browser-to-nginx certificate issue. It indicates that when the nginx proxy to the real E2B upstream, the e2b-ca-cert cannot be used to verify the upstream certificate chain.
+
+Even if **Enable Agent Access Gateway** is disabled and the old E2B directly connected address is available, the e2b-ca-cert cannot be proved to be correct. The old direct connection address bypasses the upstream certificate verification of nginx.
+
+Please refer to the "Troubleshooting Agent Access Gateway 502" section in [1.7 Agent Access Gateway Certificates and Switches](#17-agent-Access Gateway Certificates and Switches) to confirm that the "e2b-ca-cert" is not the leaf certificate of "CA:FALSE", the old certificate, or the wrong public/private CA chain.
+
+### Q16: Forgot administrator password how to do?
+
+**A:** If you cannot enter the background through the administrator login page, you can use the Supabase service_role key to call the Auth Admin API to modify the administrator user password. Find the administrator user ID from '/auth/v1/admin/users', and then call '/auth/v1/admin/users/<USER_ID>' to update the 'password' field. See [3.1 Administrator Login](#31-Administrator Login) in the "Reset when you forget the administrator password" section.
+
 ---
 
-> document version: v2.1 | update date: 2026-04-23
+> document version: v2.3 | update date: 2026-06-04
