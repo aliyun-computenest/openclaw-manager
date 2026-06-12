@@ -1,6 +1,7 @@
 # Agent Manager 功能文档
 
 > **Agent Manager** 是一个企业级 AI 智能体管理平台，提供完整的 AI 智能体创建、配置和管理能力。平台支持多种 Agent 类型（如 OpenClaw、Hermes 等），并支持多模型接入、多渠道集成，助力企业快速构建和管理各类 AI 智能体。
+> 代码开源地址： https://github.com/aliyun-computenest/agent-manager.git
 
 ---
 
