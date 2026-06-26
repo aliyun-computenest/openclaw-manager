@@ -42,14 +42,21 @@ RUN mkdir -p /home/node/.openclaw/node_modules && \
     ln -sfn /app /home/node/.openclaw/node_modules/openclaw
 
 # ── 4. Install ARMS observability plugin ──
+# The opentelemetry-instrumentation-openclaw package is NOT published to npm
+# (verified: 404 on registry.npmjs.org / registry.npmmirror.com / registry.anpm.alibaba-inc.com).
+# It is distributed as a prebuilt tarball hosted on ARMS OSS bucket in cn-hangzhou
+# (the only region where this OSS bucket exists). We download it directly here at
+# build time, so the runtime image contains the plugin files + node_modules.
+# ARMS connection parameters (endpoint, license key, project, workspace) are
+# injected at runtime via environment variables and merged into openclaw.json by
+# entrypoint.sh — see step 5 below.
 RUN cd /home/node/.openclaw/extensions && \
     mkdir -p opentelemetry-instrumentation-openclaw && \
     cd opentelemetry-instrumentation-openclaw && \
-    npm pack opentelemetry-instrumentation-openclaw@latest && \
-    tar -xzf *.tgz --strip-components=1 && rm *.tgz && \
-    npm install --omit=dev && \
-    cd $(find . -path '*/diagnostics-otel' -type d | head -1) 2>/dev/null && \
-    npm install --omit=dev || true
+    curl -fsSL "https://arms-apm-cn-hangzhou-pre.oss-cn-hangzhou.aliyuncs.com/opentelemetry-instrumentation-openclaw/opentelemetry-instrumentation-openclaw.tar.gz" -o plugin.tar.gz && \
+    tar -xzf plugin.tar.gz --strip-components=1 && rm plugin.tar.gz && \
+    npm install --omit=dev --ignore-scripts && \
+    ls -la /home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/package.json
 
 # ── 5. Write entrypoint.sh (generates openclaw.json on first boot, no-op on restart) ──
 RUN cat > /usr/local/bin/entrypoint.sh <<'ENTRYEOF'
