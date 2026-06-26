@@ -17,19 +17,6 @@ COPY agent-docker/openclaw/supervisord.conf /tmp/supervisord.conf
 RUN cat /tmp/supervisord.conf >> /etc/supervisor/supervisord.conf && \
     rm /tmp/supervisord.conf
 
-[program:openclaw]
-command=openclaw gateway run --allow-unconfigured
-user=node
-environment=HOME="/home/node",OPENCLAW_NO_RESPAWN="1"
-redirect_stderr=true
-stdout_logfile=/proc/1/fd/1
-stdout_logfile_maxbytes=0
-autorestart=true
-startretries=-1
-stopasgroup=true
-killasgroup=true
-SUPERVISORD_EOF
-
 # ── 3. Install channel connector plugins ──
 # NOTE: All plugin versions are pinned to ensure compatibility with OpenClaw 2026.3.23
 RUN mkdir -p /home/node/.openclaw/extensions && \
