@@ -88,6 +88,9 @@ if [ ! -f "${CONFIG_FILE}" ]; then
     "entries": {
       "opentelemetry-instrumentation-openclaw": {
         "enabled": true,
+        "hooks": {
+          "allowConversationAccess": true
+        },
         "config": {
           "endpoint": "${ENDPOINT}",
           "headers": {
