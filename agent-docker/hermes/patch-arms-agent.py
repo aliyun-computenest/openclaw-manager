@@ -47,16 +47,8 @@ def main():
 
     # =========================================================================
     # Patch 1: Add x-arms-project / x-cms-workspace headers and change encoding
+    # Support both ARMS 2.10.3 ("licenseKey") and 2.10.1 ("x-arms-license-key")
     # =========================================================================
-    old_header = '''\
-    header = {
-        "Content-Type": "application/x-protobuf",
-        "x-arms-license-key": ArmsEnv.instance().licenseKey,
-        "content.type": "span",
-        "X-ARMS-Encoding": "snappy",
-        "data.type": "",
-    }'''
-
     new_header = '''\
     header = {
         "Content-Type": "application/x-protobuf",
@@ -68,9 +60,31 @@ def main():
         "data.type": "",
     }'''
 
-    content, warn = apply_patch(content, old_header, new_header, "add headers & change encoding")
+    # Try 2.10.3 format first ("licenseKey" key)
+    old_header_2103 = '''\
+    header = {
+        "Content-Type": "application/x-protobuf",
+        "licenseKey": ArmsEnv.instance().licenseKey,
+        "content.type": "span",
+        "X-ARMS-Encoding": "snappy",
+        "data.type": "",
+    }'''
+
+    content, warn = apply_patch(content, old_header_2103, new_header, "add headers & change encoding (2.10.3)")
     if warn:
-        warnings.append(warn)
+        # Fallback: try 2.10.1 format ("x-arms-license-key" key)
+        old_header_2101 = '''\
+    header = {
+        "Content-Type": "application/x-protobuf",
+        "x-arms-license-key": ArmsEnv.instance().licenseKey,
+        "content.type": "span",
+        "X-ARMS-Encoding": "snappy",
+        "data.type": "",
+    }'''
+
+        content, warn2 = apply_patch(content, old_header_2101, new_header, "add headers & change encoding (2.10.1)")
+        if warn2:
+            warnings.append("Patch 'add headers & change encoding' - neither 2.10.3 nor 2.10.1 format found, skipped")
 
     # =========================================================================
     # Patch 2: Change compression from Snappy to None
@@ -123,15 +137,36 @@ def main():
 
     # =========================================================================
     # Patch 4: Add genai resource attributes
+    # Support both ARMS 2.10.3 (no trailing comma) and 2.10.1 (trailing comma)
     # =========================================================================
-    old_resource = "ARMS_SERVICE_ID_KEY_IN_SPAN: ArmsEnv.instance().service_id,"
-    new_resource = '''ARMS_SERVICE_ID_KEY_IN_SPAN: ArmsEnv.instance().service_id,
+    new_resource_with_comma = '''ARMS_SERVICE_ID_KEY_IN_SPAN: ArmsEnv.instance().service_id,
         "acs.arms.service.feature": "genai_app",
         "gen_ai.agent.system": "hermes",'''
 
-    content, warn = apply_patch(content, old_resource, new_resource, "add genai resource attributes")
-    if warn:
-        warnings.append(warn)
+    # Try 2.10.3 format first (no trailing comma — last item in dict)
+    old_resource_no_comma = "ARMS_SERVICE_ID_KEY_IN_SPAN: ArmsEnv.instance().service_id"
+    # Ensure we don't accidentally match the version WITH trailing comma
+    # by checking the no-comma version doesn't have a comma after it
+    if old_resource_no_comma in content:
+        # Check if there is a trailing comma right after the match
+        idx = content.find(old_resource_no_comma)
+        after_match = content[idx + len(old_resource_no_comma):idx + len(old_resource_no_comma) + 1]
+        if after_match == ",":
+            # It's actually the 2.10.1 format (has comma), use that
+            old_resource_with_comma = "ARMS_SERVICE_ID_KEY_IN_SPAN: ArmsEnv.instance().service_id,"
+            content, warn = apply_patch(content, old_resource_with_comma, new_resource_with_comma, "add genai resource attributes (2.10.1)")
+            if warn:
+                warnings.append(warn)
+        else:
+            # It's 2.10.3 format (no comma), add comma in replacement
+            new_resource_no_comma = '''ARMS_SERVICE_ID_KEY_IN_SPAN: ArmsEnv.instance().service_id,
+        "acs.arms.service.feature": "genai_app",
+        "gen_ai.agent.system": "hermes",'''
+            content, warn = apply_patch(content, old_resource_no_comma, new_resource_no_comma, "add genai resource attributes (2.10.3)")
+            if warn:
+                warnings.append(warn)
+    else:
+        warnings.append("Patch 'add genai resource attributes' - ARMS_SERVICE_ID_KEY_IN_SPAN not found, skipped")
 
     # =========================================================================
     # Backup original and write patched content
@@ -140,6 +175,14 @@ def main():
     content += f"\n{PATCH_MARKER}\n"
     with open(path, "w") as f:
         f.write(content)
+
+    # Clear .pyc bytecode cache to ensure patched source is used
+    cache_dir = os.path.join(os.path.dirname(path), "__pycache__")
+    if os.path.isdir(cache_dir):
+        import glob
+        for pyc in glob.glob(os.path.join(cache_dir, "_arms_load*.pyc")):
+            os.remove(pyc)
+            print(f"[patch] Removed bytecode cache: {pyc}")
 
     print(f"[patch] _arms_load.py patched successfully ({len(warnings)} warnings)")
     for w in warnings:

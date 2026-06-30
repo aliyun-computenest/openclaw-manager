@@ -82,6 +82,14 @@ export PYTHONPATH="${AUTO_INSTR}:${SITE_PACKAGES}"
 # Set ARMS env for the Python agent
 export ARMS_APP_NAME="${SERVICE_NAME:-hermes}"
 
+# Kill any zombie hermes processes that started before patch
+pkill -f 'hermes gateway run' 2>/dev/null || true
+pkill -f 'hermes dashboard' 2>/dev/null || true
+sleep 1
+
+# Clear bytecode cache to ensure patched source is used
+rm -f "${AUTO_INSTR}/__pycache__/_arms_load"*.pyc 2>/dev/null || true
+
 # Patch ARMS agent for xtrace (CMS 2.0) compatibility:
 # - Add x-arms-project / x-cms-workspace headers
 # - Disable Snappy compression (xtrace doesn't support it)
