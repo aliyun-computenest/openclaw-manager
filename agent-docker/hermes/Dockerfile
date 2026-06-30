@@ -47,6 +47,16 @@ RUN curl -fsSL https://arms-apm-cn-hangzhou.oss-cn-hangzhou.aliyuncs.com/aliyun-
     echo "ARMS Python agent installed" && \
     /opt/hermes/.venv/bin/python -c "import aliyun.opentelemetry; print('agent importable')" || echo "WARN: agent import check failed"
 
+# Install dashscope SDK — required for ARMS dashscope instrumentation to load.
+# Without this package, the ARMS agent skips dashscope instrumentation with
+# "DependencyConflict: dashscope>=1.0.0 not found" and genai spans won't be generated.
+RUN uv pip install --python /opt/hermes/.venv/bin/python --no-cache dashscope
+
+# Copy ARMS agent patch script for xtrace (CMS 2.0) compatibility.
+# Applied at container startup by entrypoint.sh to fix compression, headers, and endpoint.
+COPY agent-docker/hermes/patch-arms-agent.py /usr/local/bin/patch-arms-agent.py
+RUN chmod +x /usr/local/bin/patch-arms-agent.py
+
 # ── Write entrypoint.sh (set ARMS env + PYTHONPATH at runtime) ──
 # ARMS connection parameters (endpoint, license key, project, workspace) are
 # injected at runtime via SandboxSet environment variables. If not set,
@@ -71,6 +81,17 @@ export PYTHONPATH="${AUTO_INSTR}:${SITE_PACKAGES}"
 
 # Set ARMS env for the Python agent
 export ARMS_APP_NAME="${SERVICE_NAME:-hermes}"
+
+# Patch ARMS agent for xtrace (CMS 2.0) compatibility:
+# - Add x-arms-project / x-cms-workspace headers
+# - Disable Snappy compression (xtrace doesn't support it)
+# - Monkey-patch get_full_trace_url to use ARMS_ENDPOINT
+# - Add genai resource attributes
+ARMS_LOAD="${AUTO_INSTR}/_arms_load.py"
+if [ -f "$ARMS_LOAD" ]; then
+    /opt/hermes/.venv/bin/python /usr/local/bin/patch-arms-agent.py "$ARMS_LOAD" || \
+        echo "[entrypoint] WARNING: ARMS agent patch failed, continuing without patch"
+fi
 
 echo "[entrypoint] Python agent configured: service=${ARMS_APP_NAME}, endpoint=${ARMS_ENDPOINT}, py=${PY_VERSION}"
 exec supervisord -n
