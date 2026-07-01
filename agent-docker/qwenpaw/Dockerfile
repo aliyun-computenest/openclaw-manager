@@ -82,7 +82,7 @@ if ! $PYTHON_PATH -c "import loongsuite" 2>/dev/null; then
         --x-arms-project "$ARMS_PROJECT" \
         --x-cms-workspace "$ARMS_WORKSPACE" \
         --serviceName "$SERVICE" \
-        --endpoint "${ARMS_ENDPOINT}/v1/traces" || \
+        --endpoint "${ARMS_ENDPOINT}" || \
         echo "[entrypoint] WARNING: Plugin install failed, continuing without monitoring"
 fi
 
