@@ -64,7 +64,7 @@ set -e
 # Graceful degradation: if ARMS env not set, start without monitoring
 if [ -z "$ARMS_LICENSE_KEY" ] || [ -z "$ARMS_ENDPOINT" ]; then
     echo "[entrypoint] WARNING: Missing ARMS_* env, skipping observability plugin."
-    exec supervisord -c /etc/supervisor/conf.d/supervisord.conf
+    exec /entrypoint.sh
 fi
 
 SERVICE="${SERVICE_NAME:-qwenpaw}"
@@ -90,7 +90,8 @@ fi
 export LOONGSUITE_PYTHON_SITE_BOOTSTRAP=true
 
 echo "[entrypoint] QwenPaw observability configured: service=${SERVICE}"
-exec supervisord -c /etc/supervisor/conf.d/supervisord.conf
+# Hand off to QwenPaw's original entrypoint (generates supervisord.conf from template + starts supervisord)
+exec /entrypoint.sh
 ENTRYEOF
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
