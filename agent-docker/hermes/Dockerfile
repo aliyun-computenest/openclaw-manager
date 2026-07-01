@@ -72,7 +72,9 @@ if [ -z "$ARMS_LICENSE_KEY" ] || [ -z "$ARMS_ENDPOINT" ]; then
 fi
 
 # Detect Python version from the venv (not hardcoded to 3.13)
-PY_VERSION=$(/opt/hermes/.venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+# NOTE: Must unset PYTHONPATH to prevent ARMS agent from loading during detection,
+# which would contaminate PY_VERSION with agent startup output.
+PY_VERSION=$(PYTHONPATH= /opt/hermes/.venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
 SITE_PACKAGES="/opt/hermes/.venv/lib/python${PY_VERSION}/site-packages"
 AUTO_INSTR="${SITE_PACKAGES}/aliyun/opentelemetry/instrumentation/auto_instrumentation"
 
