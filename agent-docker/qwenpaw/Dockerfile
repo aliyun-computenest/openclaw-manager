@@ -52,3 +52,46 @@ RUN chmod +x /usr/local/bin/run-cmd.sh
 #     3. exec 镜像自带 supervisord，启动 dbus / xvfb / xfce4 / app 四个进程
 #   不覆盖 ENTRYPOINT/CMD，由平台 startup_command (run-cmd.sh modify-model) 在实例
 #   创建后完成 seed + 写入 + supervisorctl restart app，qwenpaw 重启后加载完整 providers。
+
+# ── Write entrypoint.sh (ARMS observability + graceful degradation) ──
+# QwenPaw uses the official qwenpaw-cms-plugin for CMS 2.0 integration.
+# ARMS connection parameters are injected at runtime via SandboxSet env vars.
+# If not set, the entrypoint starts QwenPaw without monitoring (graceful degradation).
+RUN cat > /usr/local/bin/entrypoint.sh <<'ENTRYEOF'
+#!/bin/bash
+set -e
+
+# Graceful degradation: if ARMS env not set, start without monitoring
+if [ -z "$ARMS_LICENSE_KEY" ] || [ -z "$ARMS_ENDPOINT" ]; then
+    echo "[entrypoint] WARNING: Missing ARMS_* env, skipping observability plugin."
+    exec supervisord -c /etc/supervisor/conf.d/supervisord.conf
+fi
+
+SERVICE="${SERVICE_NAME:-qwenpaw}"
+PYTHON_PATH="/app/venv/bin/python"
+INSTALL_URL="https://arms-apm-cn-hangzhou-pre.oss-cn-hangzhou.aliyuncs.com/qwenpaw-cms-plugin/install.sh"
+
+# Install qwenpaw-cms-plugin (idempotent - checks if already installed)
+if ! $PYTHON_PATH -c "import loongsuite" 2>/dev/null; then
+    echo "[entrypoint] Installing qwenpaw-cms-plugin..."
+    curl -fsSL "$INSTALL_URL" | bash -s -- \
+        --python "$PYTHON_PATH" \
+        --skip-qwenpaw-check \
+        --site-bootstrap \
+        --x-arms-license-key "$ARMS_LICENSE_KEY" \
+        --x-arms-project "$ARMS_PROJECT" \
+        --x-cms-workspace "$ARMS_WORKSPACE" \
+        --serviceName "$SERVICE" \
+        --endpoint "${ARMS_ENDPOINT}/v1/traces" || \
+        echo "[entrypoint] WARNING: Plugin install failed, continuing without monitoring"
+fi
+
+# Enable site bootstrap for OpenTelemetry auto-instrumentation
+export LOONGSUITE_PYTHON_SITE_BOOTSTRAP=true
+
+echo "[entrypoint] QwenPaw observability configured: service=${SERVICE}"
+exec supervisord -c /etc/supervisor/conf.d/supervisord.conf
+ENTRYEOF
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
