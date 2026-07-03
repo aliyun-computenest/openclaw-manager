@@ -98,7 +98,10 @@ if [ ! -f "${CONFIG_FILE}" ]; then
             "x-arms-project": "${PROJECT}",
             "x-cms-workspace": "${WORKSPACE}"
           },
-          "serviceName": "${SERVICE_NAME}"
+          "serviceName": "${SERVICE_NAME}",
+          "resourceAttributes": {
+            "acs.arms.service.feature": "genai_app"
+          }
         }
       }
     }
