@@ -57,6 +57,31 @@ RUN uv pip install --python /opt/hermes/.venv/bin/python --no-cache dashscope
 COPY agent-docker/hermes/patch-arms-agent.py /usr/local/bin/patch-arms-agent.py
 RUN chmod +x /usr/local/bin/patch-arms-agent.py
 
+# ── Create toggle-observability.sh for hot-switching collection on/off ──
+RUN cat > /usr/local/bin/toggle-observability.sh <<'TOGGLEEOF'
+#!/bin/bash
+set -e
+ACTION=${1:-enable}
+MARKER="/tmp/.observability_disabled"
+
+if [ "$ACTION" = "disable" ]; then
+  touch "$MARKER"
+  echo "[toggle] Observability disabled (marker set)"
+elif [ "$ACTION" = "enable" ]; then
+  rm -f "$MARKER"
+  echo "[toggle] Observability enabled (marker removed)"
+else
+  echo "[toggle] Usage: toggle-observability.sh enable|disable"
+  exit 1
+fi
+
+# Restart hermes process - supervisorctl will re-run the command
+# which goes through entrypoint that checks the marker
+supervisorctl restart hermes
+echo "[toggle] Process restarted"
+TOGGLEEOF
+RUN chmod +x /usr/local/bin/toggle-observability.sh
+
 # ── Write entrypoint.sh (set ARMS env + PYTHONPATH at runtime) ──
 # ARMS connection parameters (endpoint, license key, project, workspace) are
 # injected at runtime via SandboxSet environment variables. If not set,
@@ -77,6 +102,12 @@ fi
 PY_VERSION=$(PYTHONPATH= /opt/hermes/.venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
 SITE_PACKAGES="/opt/hermes/.venv/lib/python${PY_VERSION}/site-packages"
 AUTO_INSTR="${SITE_PACKAGES}/aliyun/opentelemetry/instrumentation/auto_instrumentation"
+
+# Check if observability is disabled via marker file
+if [ -f /tmp/.observability_disabled ]; then
+    echo "[entrypoint] Observability disabled via marker, skipping Python agent."
+    exec supervisord -n
+fi
 
 # Set PYTHONPATH for auto-instrumentation (Python agent auto-loads on import)
 export PYTHONPATH="${AUTO_INSTR}:${SITE_PACKAGES}"

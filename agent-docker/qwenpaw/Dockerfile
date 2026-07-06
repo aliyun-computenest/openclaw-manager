@@ -53,6 +53,46 @@ RUN chmod +x /usr/local/bin/run-cmd.sh
 #   不覆盖 ENTRYPOINT/CMD，由平台 startup_command (run-cmd.sh modify-model) 在实例
 #   创建后完成 seed + 写入 + supervisorctl restart app，qwenpaw 重启后加载完整 providers。
 
+# ── Create toggle-observability.sh for hot-switching collection on/off ──
+RUN cat > /usr/local/bin/toggle-observability.sh <<'TOGGLEEOF'
+#!/bin/bash
+set -e
+ACTION=${1:-enable}
+MARKER="/tmp/.observability_disabled"
+
+if [ "$ACTION" = "disable" ]; then
+  touch "$MARKER"
+  echo "[toggle] Observability disabled (marker set)"
+elif [ "$ACTION" = "enable" ]; then
+  rm -f "$MARKER"
+  echo "[toggle] Observability enabled (marker removed)"
+else
+  echo "[toggle] Usage: toggle-observability.sh enable|disable"
+  exit 1
+fi
+
+# Restart app process via supervisorctl or signal
+if command -v supervisorctl &>/dev/null; then
+  # Try multiple common socket paths
+  for sock in /var/run/supervisor.sock /tmp/supervisor.sock /run/supervisor.sock; do
+    if [ -S "$sock" ]; then
+      supervisorctl -s "unix://$sock" restart all 2>/dev/null && echo "[toggle] Process restarted via supervisorctl" && exit 0
+    fi
+  done
+fi
+
+# Fallback: find process on port 8088 and SIGTERM it (autorestart will respawn)
+PID=$(lsof -ti:8088 2>/dev/null | head -1)
+if [ -n "$PID" ]; then
+  kill -TERM "$PID" 2>/dev/null
+  echo "[toggle] Process (pid=$PID) signaled to restart"
+else
+  echo "[toggle] WARNING: Could not find process to restart"
+  exit 1
+fi
+TOGGLEEOF
+RUN chmod +x /usr/local/bin/toggle-observability.sh
+
 # ── Write entrypoint.sh (ARMS observability + graceful degradation) ──
 # QwenPaw uses the official qwenpaw-cms-plugin for CMS 2.0 integration.
 # ARMS connection parameters are injected at runtime via SandboxSet env vars.
@@ -84,6 +124,12 @@ if ! $PYTHON_PATH -c "import loongsuite" 2>/dev/null; then
         --serviceName "$SERVICE" \
         --endpoint "${ARMS_ENDPOINT}" || \
         echo "[entrypoint] WARNING: Plugin install failed, continuing without monitoring"
+fi
+
+# Check if observability is disabled via marker file
+if [ -f /tmp/.observability_disabled ]; then
+    echo "[entrypoint] Observability disabled via marker, skipping observability plugin."
+    exec /entrypoint.sh
 fi
 
 # Enable site bootstrap for OpenTelemetry auto-instrumentation
