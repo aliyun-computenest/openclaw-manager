@@ -58,6 +58,21 @@ RUN cd /home/node/.openclaw/extensions && \
     npm install --omit=dev --ignore-scripts && \
     ls -la /home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/package.json
 
+# ── 4b. Install rejection-guard to prevent plugin async errors from crashing gateway ──
+# The observability plugin has 11 async hook handlers without try/catch. Any async
+# failure (e.g. network timeout to xtrace endpoint) causes an unhandled promise
+# rejection, which crashes the process under Node.js v24's default
+# --unhandled-rejections=throw mode. This guard registers a global listener that
+# logs the rejection instead of letting it propagate.
+RUN cat > /home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/rejection-guard.js <<'GUARDEOF'
+// rejection-guard.js — Prevents ArmsTrace plugin async errors from crashing the gateway.
+// Registered via NODE_OPTIONS=--require so it loads before any plugin code.
+process.on('unhandledRejection', (reason, promise) => {
+  const msg = reason instanceof Error ? reason.stack : String(reason);
+  console.error(`[ArmsTrace][WARN] Swallowed unhandled rejection: ${msg}`);
+});
+GUARDEOF
+
 # ── 5. Write entrypoint.sh (generates openclaw.json on first boot, no-op on restart) ──
 RUN cat > /usr/local/bin/entrypoint.sh <<'ENTRYEOF'
 #!/bin/bash
@@ -128,6 +143,15 @@ JSONEOF
 
     chown node:node "${CONFIG_FILE}" 2>/dev/null || true
     echo "[entrypoint] Generated ${CONFIG_FILE} with SERVICE_NAME=${SERVICE_NAME}"
+fi
+
+# Inject rejection-guard so Node.js loads it before any plugin code.
+# This prevents unhandled promise rejections in the ArmsTrace plugin from
+# crashing the gateway process (Node.js v24 defaults to throw on unhandled).
+REJECTION_GUARD="/home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/rejection-guard.js"
+if [ -f "${REJECTION_GUARD}" ]; then
+    export NODE_OPTIONS="--require ${REJECTION_GUARD} ${NODE_OPTIONS:-}"
+    echo "[entrypoint] NODE_OPTIONS=${NODE_OPTIONS}"
 fi
 
 exec supervisord -n
