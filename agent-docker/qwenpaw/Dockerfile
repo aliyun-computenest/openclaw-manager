@@ -60,23 +60,36 @@ set -e
 ACTION=${1:-enable}
 MARKER="/tmp/.observability_disabled"
 
+# Find the supervisord config file that has [program:app]
+CONF_FILE=$(grep -l "^\[program:app\]" /etc/supervisor/conf.d/*.conf 2>/dev/null | head -1)
+[ -z "$CONF_FILE" ] && CONF_FILE=$(grep -l "^\[program:app\]" /etc/supervisord.conf 2>/dev/null | head -1)
+
 if [ "$ACTION" = "disable" ]; then
   touch "$MARKER"
-  echo "[toggle] Observability disabled (marker set)"
+  # Wrap app command to unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP
+  if [ -n "$CONF_FILE" ]; then
+    sed -i 's|^command=qwenpaw app --host 0.0.0.0 --port 8088$|command=/bin/sh -c "unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP; exec qwenpaw app --host 0.0.0.0 --port 8088"|' "$CONF_FILE"
+  fi
+  echo "[toggle] Observability disabled (marker set, config wrapped)"
 elif [ "$ACTION" = "enable" ]; then
   rm -f "$MARKER"
-  echo "[toggle] Observability enabled (marker removed)"
+  # Restore original command
+  if [ -n "$CONF_FILE" ]; then
+    sed -i 's|^command=/bin/sh -c "unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP; exec qwenpaw app --host 0.0.0.0 --port 8088"$|command=qwenpaw app --host 0.0.0.0 --port 8088|' "$CONF_FILE"
+  fi
+  echo "[toggle] Observability enabled (marker removed, config restored)"
 else
   echo "[toggle] Usage: toggle-observability.sh enable|disable"
   exit 1
 fi
 
-# Restart app process via supervisorctl or signal
+# Restart app process via supervisorctl (reread + update to pick up config changes)
 if command -v supervisorctl &>/dev/null; then
-  # Try multiple common socket paths
   for sock in /var/run/supervisor.sock /tmp/supervisor.sock /run/supervisor.sock; do
     if [ -S "$sock" ]; then
-      supervisorctl -s "unix://$sock" restart all 2>/dev/null && echo "[toggle] Process restarted via supervisorctl" && exit 0
+      supervisorctl -s "unix://$sock" reread 2>/dev/null || true
+      supervisorctl -s "unix://$sock" update 2>/dev/null || true
+      supervisorctl -s "unix://$sock" restart app 2>/dev/null && echo "[toggle] app restarted via supervisorctl" && exit 0
     fi
   done
 fi
