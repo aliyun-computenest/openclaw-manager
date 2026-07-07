@@ -64,35 +64,27 @@ set -e
 ACTION=${1:-enable}
 MARKER="/tmp/.observability_disabled"
 
-# ARMS Python agent loads via sitecustomize.py (auto-loaded by Python site module),
-# NOT via PYTHONPATH. So we must rename this file to actually disable the agent.
-SITECUST=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation/sitecustomize.py 2>/dev/null | head -1)
+# Hermes ARMS Python agent is loaded via PYTHONPATH (auto_instrumentation dir).
+# supervisord.conf wraps both [program:hermes] and [program:hermes-dashboard]
+# to `exec env -u PYTHONPATH ...` when this marker is present, so restarting
+# both programs is enough to physically remove PYTHONPATH from child processes.
 
 if [ "$ACTION" = "disable" ]; then
   touch "$MARKER"
-  if [ -n "$SITECUST" ] && [ -f "$SITECUST" ]; then
-    mv "$SITECUST" "${SITECUST}.disabled"
-    echo "[toggle] Disabled sitecustomize.py at $SITECUST"
-  fi
-  echo "[toggle] Observability disabled"
+  echo "[toggle] Observability disabled (marker set)"
 elif [ "$ACTION" = "enable" ]; then
   rm -f "$MARKER"
-  # Restore sitecustomize.py if previously disabled
-  DISABLED=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation/sitecustomize.py.disabled 2>/dev/null | head -1)
-  if [ -n "$DISABLED" ] && [ -f "$DISABLED" ]; then
-    ORIG="${DISABLED%.disabled}"
-    mv "$DISABLED" "$ORIG"
-    echo "[toggle] Restored sitecustomize.py at $ORIG"
-  fi
-  echo "[toggle] Observability enabled"
+  echo "[toggle] Observability enabled (marker removed)"
 else
   echo "[toggle] Usage: toggle-observability.sh enable|disable"
   exit 1
 fi
 
-# Restart hermes so the change takes effect
-supervisorctl restart hermes
-echo "[toggle] Process restarted"
+# Restart BOTH hermes programs so the wrapper picks up the marker.
+# Both programs spawn Python processes; leaving hermes-dashboard alone would
+# keep an ARMS-loaded process (pid 240 in prior diagnostics) uploading data.
+supervisorctl restart hermes hermes-dashboard
+echo "[toggle] hermes + hermes-dashboard restarted"
 TOGGLEEOF
 RUN chmod +x /usr/local/bin/toggle-observability.sh
 
