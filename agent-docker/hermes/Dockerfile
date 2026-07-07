@@ -71,24 +71,38 @@ MARKER="/tmp/.observability_disabled"
 
 if [ "$ACTION" = "disable" ]; then
   touch "$MARKER"
-  echo "[toggle] Observability disabled (marker set)"
+  # Physically remove the auto_instrumentation directory so ARMS agent cannot load
+  # even if hermes binary programmatically re-sets PYTHONPATH at runtime.
+  INSTR_DIR=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation -maxdepth 0 -type d 2>/dev/null | head -1)
+  if [ -n "$INSTR_DIR" ] && [ -d "$INSTR_DIR" ]; then
+    mv "$INSTR_DIR" "${INSTR_DIR}.disabled"
+    echo "[toggle] Moved $INSTR_DIR -> .disabled"
+  fi
+  echo "[toggle] Observability disabled"
 elif [ "$ACTION" = "enable" ]; then
   rm -f "$MARKER"
-  echo "[toggle] Observability enabled (marker removed)"
+  # Restore auto_instrumentation directory
+  DISABLED_DIR=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation.disabled -maxdepth 0 -type d 2>/dev/null | head -1)
+  if [ -n "$DISABLED_DIR" ] && [ -d "$DISABLED_DIR" ]; then
+    ORIG="${DISABLED_DIR%.disabled}"
+    mv "$DISABLED_DIR" "$ORIG"
+    echo "[toggle] Restored $ORIG"
+  fi
+  echo "[toggle] Observability enabled"
 else
   echo "[toggle] Usage: toggle-observability.sh enable|disable"
   exit 1
 fi
 
 # Kill ALL hermes processes. The hermes binary spawns internal daemon processes
-# (double-fork/setsid) that escape supervisor's process group. pkill -f is unreliable
-# in e2b Sandbox execution context, so we use explicit pgrep + kill -9 loop.
+# (double-fork/setsid) that escape supervisor's process group and programmatically
+# re-set PYTHONPATH at runtime. We must kill them + remove the instrumentation dir
+# so new processes have nothing to load even if PYTHONPATH is re-set.
 for pid in $(pgrep -f '/opt/hermes/.venv/bin/hermes' 2>/dev/null); do
   kill -9 "$pid" 2>/dev/null && echo "[toggle] Killed pid=$pid"
 done
 sleep 3
-# Supervisor's autorestart re-spawns managed programs; wrapper checks marker.
-echo "[toggle] All hermes processes killed, supervisor will auto-restart"
+echo "[toggle] Done. Supervisor will auto-restart hermes processes."
 TOGGLEEOF
 RUN chmod +x /usr/local/bin/toggle-observability.sh
 
