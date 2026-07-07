@@ -80,12 +80,14 @@ else
   exit 1
 fi
 
-# Kill ALL hermes processes first. The hermes binary spawns internal daemon
-# processes (double-fork/setsid) that escape supervisor's process group, so
-# `supervisorctl restart` alone cannot kill them. We must pkill everything,
-# then let supervisor's autorestart re-spawn the managed programs cleanly.
-pkill -9 -f '/opt/hermes/.venv/bin/hermes' 2>/dev/null || true
+# Kill ALL hermes processes. The hermes binary spawns internal daemon processes
+# (double-fork/setsid) that escape supervisor's process group. pkill -f is unreliable
+# in e2b Sandbox execution context, so we use explicit pgrep + kill -9 loop.
+for pid in $(pgrep -f '/opt/hermes/.venv/bin/hermes' 2>/dev/null); do
+  kill -9 "$pid" 2>/dev/null && echo "[toggle] Killed pid=$pid"
+done
 sleep 3
+# Supervisor's autorestart re-spawns managed programs; wrapper checks marker.
 echo "[toggle] All hermes processes killed, supervisor will auto-restart"
 TOGGLEEOF
 RUN chmod +x /usr/local/bin/toggle-observability.sh
