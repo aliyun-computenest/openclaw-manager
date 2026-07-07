@@ -60,35 +60,39 @@ set -e
 ACTION=${1:-enable}
 MARKER="/tmp/.observability_disabled"
 
-# Find the supervisord config file that has [program:app]
-CONF_FILE=$(grep -l "^\[program:app\]" /etc/supervisor/conf.d/*.conf 2>/dev/null | head -1)
-[ -z "$CONF_FILE" ] && CONF_FILE=$(grep -l "^\[program:app\]" /etc/supervisord.conf 2>/dev/null | head -1)
+# QwenPaw's loongsuite agent auto-loads via a Python .pth file (loongsuite-site-bootstrap.pth)
+# located in site-packages. Python's site module executes any 'import ...' line in .pth files
+# at interpreter startup, regardless of LOONGSUITE_PYTHON_SITE_BOOTSTRAP env var.
+# The only reliable way to disable it is to rename the .pth file (Python ignores non-.pth extensions).
+find_pth() {
+  find /app/venv/lib/python*/site-packages -maxdepth 3 -type f -name 'loongsuite-site-bootstrap.pth' 2>/dev/null
+}
+find_pth_disabled() {
+  find /app/venv/lib/python*/site-packages -maxdepth 3 -type f -name 'loongsuite-site-bootstrap.pth.disabled' 2>/dev/null
+}
 
 if [ "$ACTION" = "disable" ]; then
   touch "$MARKER"
-  # Wrap app command to unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP
-  if [ -n "$CONF_FILE" ]; then
-    sed -i 's|^command=qwenpaw app --host 0.0.0.0 --port 8088$|command=/bin/sh -c "exec env -u LOONGSUITE_PYTHON_SITE_BOOTSTRAP qwenpaw app --host 0.0.0.0 --port 8088"|' "$CONF_FILE"
-  fi
-  echo "[toggle] Observability disabled (marker set, config wrapped)"
+  find_pth | while read f; do
+    mv "$f" "${f}.disabled" && echo "[toggle] Disabled .pth: $f"
+  done
+  echo "[toggle] Observability disabled"
 elif [ "$ACTION" = "enable" ]; then
   rm -f "$MARKER"
-  # Restore original command
-  if [ -n "$CONF_FILE" ]; then
-    sed -i 's|^command=/bin/sh -c "exec env -u LOONGSUITE_PYTHON_SITE_BOOTSTRAP qwenpaw app --host 0.0.0.0 --port 8088"$|command=qwenpaw app --host 0.0.0.0 --port 8088|' "$CONF_FILE"
-  fi
-  echo "[toggle] Observability enabled (marker removed, config restored)"
+  find_pth_disabled | while read f; do
+    orig="${f%.disabled}"
+    mv "$f" "$orig" && echo "[toggle] Restored .pth: $orig"
+  done
+  echo "[toggle] Observability enabled"
 else
   echo "[toggle] Usage: toggle-observability.sh enable|disable"
   exit 1
 fi
 
-# Restart app process via supervisorctl (reread + update to pick up config changes)
+# Restart app process via supervisorctl (or signal fallback)
 if command -v supervisorctl &>/dev/null; then
   for sock in /var/run/supervisor.sock /tmp/supervisor.sock /run/supervisor.sock; do
     if [ -S "$sock" ]; then
-      supervisorctl -s "unix://$sock" reread 2>/dev/null || true
-      supervisorctl -s "unix://$sock" update 2>/dev/null || true
       supervisorctl -s "unix://$sock" restart app 2>/dev/null && echo "[toggle] app restarted via supervisorctl" && exit 0
     fi
   done

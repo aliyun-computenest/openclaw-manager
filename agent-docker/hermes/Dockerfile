@@ -64,19 +64,33 @@ set -e
 ACTION=${1:-enable}
 MARKER="/tmp/.observability_disabled"
 
+# ARMS Python agent loads via sitecustomize.py (auto-loaded by Python site module),
+# NOT via PYTHONPATH. So we must rename this file to actually disable the agent.
+SITECUST=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation/sitecustomize.py 2>/dev/null | head -1)
+
 if [ "$ACTION" = "disable" ]; then
   touch "$MARKER"
-  echo "[toggle] Observability disabled (marker set)"
+  if [ -n "$SITECUST" ] && [ -f "$SITECUST" ]; then
+    mv "$SITECUST" "${SITECUST}.disabled"
+    echo "[toggle] Disabled sitecustomize.py at $SITECUST"
+  fi
+  echo "[toggle] Observability disabled"
 elif [ "$ACTION" = "enable" ]; then
   rm -f "$MARKER"
-  echo "[toggle] Observability enabled (marker removed)"
+  # Restore sitecustomize.py if previously disabled
+  DISABLED=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation/sitecustomize.py.disabled 2>/dev/null | head -1)
+  if [ -n "$DISABLED" ] && [ -f "$DISABLED" ]; then
+    ORIG="${DISABLED%.disabled}"
+    mv "$DISABLED" "$ORIG"
+    echo "[toggle] Restored sitecustomize.py at $ORIG"
+  fi
+  echo "[toggle] Observability enabled"
 else
   echo "[toggle] Usage: toggle-observability.sh enable|disable"
   exit 1
 fi
 
-# Restart hermes process - supervisorctl will re-run the command
-# which goes through entrypoint that checks the marker
+# Restart hermes so the change takes effect
 supervisorctl restart hermes
 echo "[toggle] Process restarted"
 TOGGLEEOF
