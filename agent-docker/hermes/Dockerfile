@@ -80,11 +80,13 @@ else
   exit 1
 fi
 
-# Restart BOTH hermes programs so the wrapper picks up the marker.
-# Both programs spawn Python processes; leaving hermes-dashboard alone would
-# keep an ARMS-loaded process (pid 240 in prior diagnostics) uploading data.
-supervisorctl restart hermes hermes-dashboard
-echo "[toggle] hermes + hermes-dashboard restarted"
+# Kill ALL hermes processes first. The hermes binary spawns internal daemon
+# processes (double-fork/setsid) that escape supervisor's process group, so
+# `supervisorctl restart` alone cannot kill them. We must pkill everything,
+# then let supervisor's autorestart re-spawn the managed programs cleanly.
+pkill -9 -f '/opt/hermes/.venv/bin/hermes' 2>/dev/null || true
+sleep 3
+echo "[toggle] All hermes processes killed, supervisor will auto-restart"
 TOGGLEEOF
 RUN chmod +x /usr/local/bin/toggle-observability.sh
 
