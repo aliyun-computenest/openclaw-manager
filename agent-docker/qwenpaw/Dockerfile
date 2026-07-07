@@ -68,14 +68,14 @@ if [ "$ACTION" = "disable" ]; then
   touch "$MARKER"
   # Wrap app command to unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP
   if [ -n "$CONF_FILE" ]; then
-    sed -i 's|^command=qwenpaw app --host 0.0.0.0 --port 8088$|command=/bin/sh -c "unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP; exec qwenpaw app --host 0.0.0.0 --port 8088"|' "$CONF_FILE"
+    sed -i 's|^command=qwenpaw app --host 0.0.0.0 --port 8088$|command=/bin/sh -c "exec env -u LOONGSUITE_PYTHON_SITE_BOOTSTRAP qwenpaw app --host 0.0.0.0 --port 8088"|' "$CONF_FILE"
   fi
   echo "[toggle] Observability disabled (marker set, config wrapped)"
 elif [ "$ACTION" = "enable" ]; then
   rm -f "$MARKER"
   # Restore original command
   if [ -n "$CONF_FILE" ]; then
-    sed -i 's|^command=/bin/sh -c "unset LOONGSUITE_PYTHON_SITE_BOOTSTRAP; exec qwenpaw app --host 0.0.0.0 --port 8088"$|command=qwenpaw app --host 0.0.0.0 --port 8088|' "$CONF_FILE"
+    sed -i 's|^command=/bin/sh -c "exec env -u LOONGSUITE_PYTHON_SITE_BOOTSTRAP qwenpaw app --host 0.0.0.0 --port 8088"$|command=qwenpaw app --host 0.0.0.0 --port 8088|' "$CONF_FILE"
   fi
   echo "[toggle] Observability enabled (marker removed, config restored)"
 else
