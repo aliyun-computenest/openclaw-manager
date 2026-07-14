@@ -61,6 +61,11 @@ spec:
           env:
             - name: ENVD_DIR
               value: /mnt/envd
+            # Pod name for ARMS service identification (Downward API)
+            - name: SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             # 显式置空 Kubernetes 注入的环境变量，避免 SDK 误以为运行在 Pod 内
             - name: KUBERNETES_SERVICE_PORT_HTTPS
               value: ""
