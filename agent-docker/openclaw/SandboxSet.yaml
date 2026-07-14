@@ -39,7 +39,7 @@ spec:
       containers:
         - name: agent-manager-openclaw
           # image 会在创建时被动态覆盖
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/openclaw-manager:0b436e0ea2b66ef4b424dc1b0a39684dcb15c690
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/openclaw-manager:openclaw.observability.test.50
           securityContext:
             readOnlyRootFilesystem: false
             runAsUser: 0
@@ -55,16 +55,7 @@ spec:
           env:
             - name: OPENCLAW_CONFIG_DIR
               value: /home/node/.openclaw/openclaw.json
-            # ARMS observability: injected by platform at SandboxSet creation
-            - name: ARMS_ENDPOINT
-              value: ""
-            - name: ARMS_LICENSE_KEY
-              value: ""
-            - name: ARMS_PROJECT
-              value: ""
-            - name: ARMS_WORKSPACE
-              value: ""
-            # Pod name for ARMS service identification
+            # Pod name for ARMS service identification (Downward API)
             - name: SERVICE_NAME
               valueFrom:
                 fieldRef:

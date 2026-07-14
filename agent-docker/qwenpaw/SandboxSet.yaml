@@ -45,8 +45,7 @@ spec:
         - name: agent-manager-qwenpaw
           image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/agent-manager-qwenpaw-test:v0.0.1
           imagePullPolicy: IfNotPresent
-          # 不指定 command/args，沿用镜像原生 ENTRYPOINT(docker-entrypoint.sh) + CMD(/entrypoint.sh)，
-          # 由 qwenpaw 内部 supervisord 启动 dbus/xvfb/xfce4/app 等子进程。
+          command: ["/usr/local/bin/entrypoint.sh"]
           ports:
             - name: qwenpaw
               containerPort: 8088
