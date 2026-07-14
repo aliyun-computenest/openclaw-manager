@@ -43,7 +43,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: agent-manager-qwenpaw
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/agent-manager-qwenpaw-test:v0.0.1
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/agent-manager-qwenpaw-test:2026.7.14
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/entrypoint.sh"]
           ports:
