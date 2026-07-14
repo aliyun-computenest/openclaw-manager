@@ -58,109 +58,14 @@ COPY agent-docker/hermes/patch-arms-agent.py /usr/local/bin/patch-arms-agent.py
 RUN chmod +x /usr/local/bin/patch-arms-agent.py
 
 # ── Create toggle-observability.sh for hot-switching collection on/off ──
-RUN cat > /usr/local/bin/toggle-observability.sh <<'TOGGLEEOF'
-#!/bin/bash
-set -e
-ACTION=${1:-enable}
-MARKER="/tmp/.observability_disabled"
-
-# Hermes ARMS Python agent is loaded via PYTHONPATH (auto_instrumentation dir).
-# supervisord.conf wraps both [program:hermes] and [program:hermes-dashboard]
-# to `exec env -u PYTHONPATH ...` when this marker is present, so restarting
-# both programs is enough to physically remove PYTHONPATH from child processes.
-
-if [ "$ACTION" = "disable" ]; then
-  touch "$MARKER"
-  # Physically remove the auto_instrumentation directory so ARMS agent cannot load
-  # even if hermes binary programmatically re-sets PYTHONPATH at runtime.
-  INSTR_DIR=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation -maxdepth 0 -type d 2>/dev/null | head -1)
-  if [ -n "$INSTR_DIR" ] && [ -d "$INSTR_DIR" ]; then
-    mv "$INSTR_DIR" "${INSTR_DIR}.disabled"
-    echo "[toggle] Moved $INSTR_DIR -> .disabled"
-  fi
-  echo "[toggle] Observability disabled"
-elif [ "$ACTION" = "enable" ]; then
-  rm -f "$MARKER"
-  # Restore auto_instrumentation directory
-  DISABLED_DIR=$(find /opt/hermes/.venv/lib/python*/site-packages/aliyun/opentelemetry/instrumentation/auto_instrumentation.disabled -maxdepth 0 -type d 2>/dev/null | head -1)
-  if [ -n "$DISABLED_DIR" ] && [ -d "$DISABLED_DIR" ]; then
-    ORIG="${DISABLED_DIR%.disabled}"
-    mv "$DISABLED_DIR" "$ORIG"
-    echo "[toggle] Restored $ORIG"
-  fi
-  echo "[toggle] Observability enabled"
-else
-  echo "[toggle] Usage: toggle-observability.sh enable|disable"
-  exit 1
-fi
-
-# Kill ALL hermes processes. The hermes binary spawns internal daemon processes
-# (double-fork/setsid) that escape supervisor's process group and programmatically
-# re-set PYTHONPATH at runtime. We must kill them + remove the instrumentation dir
-# so new processes have nothing to load even if PYTHONPATH is re-set.
-for pid in $(pgrep -f '/opt/hermes/.venv/bin/hermes' 2>/dev/null); do
-  kill -9 "$pid" 2>/dev/null && echo "[toggle] Killed pid=$pid"
-done
-sleep 3
-echo "[toggle] Done. Supervisor will auto-restart hermes processes."
-TOGGLEEOF
+COPY agent-docker/hermes/toggle-observability.sh /usr/local/bin/toggle-observability.sh
 RUN chmod +x /usr/local/bin/toggle-observability.sh
 
 # ── Write entrypoint.sh (set ARMS env + PYTHONPATH at runtime) ──
 # ARMS connection parameters (endpoint, license key, project, workspace) are
 # injected at runtime via SandboxSet environment variables. If not set,
 # the entrypoint starts hermes without monitoring (graceful degradation).
-RUN cat > /usr/local/bin/entrypoint.sh <<'ENTRYEOF'
-#!/bin/bash
-set -e
-
-# Graceful degradation: if ARMS env not set, start without monitoring
-if [ -z "$ARMS_LICENSE_KEY" ] || [ -z "$ARMS_ENDPOINT" ]; then
-    echo "[entrypoint] WARNING: Missing ARMS_* env, skipping Python agent."
-    exec supervisord -n
-fi
-
-# Detect Python version from the venv (not hardcoded to 3.13)
-# NOTE: Must unset PYTHONPATH to prevent ARMS agent from loading during detection,
-# which would contaminate PY_VERSION with agent startup output.
-PY_VERSION=$(PYTHONPATH= /opt/hermes/.venv/bin/python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-SITE_PACKAGES="/opt/hermes/.venv/lib/python${PY_VERSION}/site-packages"
-AUTO_INSTR="${SITE_PACKAGES}/aliyun/opentelemetry/instrumentation/auto_instrumentation"
-
-# Check if observability is disabled via marker file
-if [ -f /tmp/.observability_disabled ]; then
-    echo "[entrypoint] Observability disabled via marker, skipping Python agent."
-    exec supervisord -n
-fi
-
-# Set PYTHONPATH for auto-instrumentation (Python agent auto-loads on import)
-export PYTHONPATH="${AUTO_INSTR}:${SITE_PACKAGES}"
-
-# Set ARMS env for the Python agent
-export ARMS_APP_NAME="${SERVICE_NAME:-hermes}"
-
-# Kill any zombie hermes processes that started before patch
-pkill -f 'hermes gateway run' 2>/dev/null || true
-pkill -f 'hermes dashboard' 2>/dev/null || true
-sleep 1
-
-# Clear bytecode cache to ensure patched source is used
-rm -f "${AUTO_INSTR}/__pycache__/_arms_load"*.pyc 2>/dev/null || true
-
-# Patch ARMS agent for xtrace (CMS 2.0) compatibility:
-# - Add x-arms-project / x-cms-workspace headers
-# - Disable Snappy compression (xtrace doesn't support it)
-# - Monkey-patch get_full_trace_url to use ARMS_ENDPOINT
-# - Add genai resource attributes
-ARMS_LOAD="${AUTO_INSTR}/_arms_load.py"
-if [ -f "$ARMS_LOAD" ]; then
-    /opt/hermes/.venv/bin/python /usr/local/bin/patch-arms-agent.py "$ARMS_LOAD" || \
-        echo "[entrypoint] WARNING: ARMS agent patch failed, continuing without patch"
-fi
-
-echo "[entrypoint] Python agent configured: service=${ARMS_APP_NAME}, endpoint=${ARMS_ENDPOINT}, py=${PY_VERSION}"
-exec supervisord -n
-ENTRYEOF
+COPY agent-docker/hermes/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Disable tirith (Terraform policy checker) — not needed, avoids 12MB download on

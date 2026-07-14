@@ -54,108 +54,14 @@ RUN chmod +x /usr/local/bin/run-cmd.sh
 #   创建后完成 seed + 写入 + supervisorctl restart app，qwenpaw 重启后加载完整 providers。
 
 # ── Create toggle-observability.sh for hot-switching collection on/off ──
-RUN cat > /usr/local/bin/toggle-observability.sh <<'TOGGLEEOF'
-#!/bin/bash
-set -e
-ACTION=${1:-enable}
-MARKER="/tmp/.observability_disabled"
-
-# QwenPaw's loongsuite agent auto-loads via a Python .pth file (loongsuite-site-bootstrap.pth)
-# located in site-packages. Python's site module executes any 'import ...' line in .pth files
-# at interpreter startup, regardless of LOONGSUITE_PYTHON_SITE_BOOTSTRAP env var.
-# The only reliable way to disable it is to rename the .pth file (Python ignores non-.pth extensions).
-find_pth() {
-  find /app/venv/lib/python*/site-packages -maxdepth 3 -type f -name 'loongsuite-site-bootstrap.pth' 2>/dev/null
-}
-find_pth_disabled() {
-  find /app/venv/lib/python*/site-packages -maxdepth 3 -type f -name 'loongsuite-site-bootstrap.pth.disabled' 2>/dev/null
-}
-
-if [ "$ACTION" = "disable" ]; then
-  touch "$MARKER"
-  find_pth | while read f; do
-    mv "$f" "${f}.disabled" && echo "[toggle] Disabled .pth: $f"
-  done
-  echo "[toggle] Observability disabled"
-elif [ "$ACTION" = "enable" ]; then
-  rm -f "$MARKER"
-  find_pth_disabled | while read f; do
-    orig="${f%.disabled}"
-    mv "$f" "$orig" && echo "[toggle] Restored .pth: $orig"
-  done
-  echo "[toggle] Observability enabled"
-else
-  echo "[toggle] Usage: toggle-observability.sh enable|disable"
-  exit 1
-fi
-
-# Restart app process via supervisorctl (or signal fallback)
-if command -v supervisorctl &>/dev/null; then
-  for sock in /var/run/supervisor.sock /tmp/supervisor.sock /run/supervisor.sock; do
-    if [ -S "$sock" ]; then
-      supervisorctl -s "unix://$sock" restart app 2>/dev/null && echo "[toggle] app restarted via supervisorctl" && exit 0
-    fi
-  done
-fi
-
-# Fallback: find process on port 8088 and SIGTERM it (autorestart will respawn)
-PID=$(lsof -ti:8088 2>/dev/null | head -1)
-if [ -n "$PID" ]; then
-  kill -TERM "$PID" 2>/dev/null
-  echo "[toggle] Process (pid=$PID) signaled to restart"
-else
-  echo "[toggle] WARNING: Could not find process to restart"
-  exit 1
-fi
-TOGGLEEOF
+COPY agent-docker/qwenpaw/toggle-observability.sh /usr/local/bin/toggle-observability.sh
 RUN chmod +x /usr/local/bin/toggle-observability.sh
 
 # ── Write entrypoint.sh (ARMS observability + graceful degradation) ──
 # QwenPaw uses the official qwenpaw-cms-plugin for CMS 2.0 integration.
 # ARMS connection parameters are injected at runtime via SandboxSet env vars.
 # If not set, the entrypoint starts QwenPaw without monitoring (graceful degradation).
-RUN cat > /usr/local/bin/entrypoint.sh <<'ENTRYEOF'
-#!/bin/bash
-set -e
-
-# Graceful degradation: if ARMS env not set, start without monitoring
-if [ -z "$ARMS_LICENSE_KEY" ] || [ -z "$ARMS_ENDPOINT" ]; then
-    echo "[entrypoint] WARNING: Missing ARMS_* env, skipping observability plugin."
-    exec /entrypoint.sh
-fi
-
-SERVICE="${SERVICE_NAME:-qwenpaw}"
-PYTHON_PATH="/app/venv/bin/python"
-INSTALL_URL="https://arms-apm-cn-hangzhou-pre.oss-cn-hangzhou.aliyuncs.com/qwenpaw-cms-plugin/install.sh"
-
-# Install qwenpaw-cms-plugin (idempotent - checks if already installed)
-if ! $PYTHON_PATH -c "import loongsuite" 2>/dev/null; then
-    echo "[entrypoint] Installing qwenpaw-cms-plugin..."
-    curl -fsSL "$INSTALL_URL" | bash -s -- \
-        --python "$PYTHON_PATH" \
-        --skip-qwenpaw-check \
-        --site-bootstrap \
-        --x-arms-license-key "$ARMS_LICENSE_KEY" \
-        --x-arms-project "$ARMS_PROJECT" \
-        --x-cms-workspace "$ARMS_WORKSPACE" \
-        --serviceName "$SERVICE" \
-        --endpoint "${ARMS_ENDPOINT}" || \
-        echo "[entrypoint] WARNING: Plugin install failed, continuing without monitoring"
-fi
-
-# Check if observability is disabled via marker file
-if [ -f /tmp/.observability_disabled ]; then
-    echo "[entrypoint] Observability disabled via marker, skipping observability plugin."
-    exec /entrypoint.sh
-fi
-
-# Enable site bootstrap for OpenTelemetry auto-instrumentation
-export LOONGSUITE_PYTHON_SITE_BOOTSTRAP=true
-
-echo "[entrypoint] QwenPaw observability configured: service=${SERVICE}"
-# Hand off to QwenPaw's original entrypoint (generates supervisord.conf from template + starts supervisord)
-exec /entrypoint.sh
-ENTRYEOF
+COPY agent-docker/qwenpaw/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

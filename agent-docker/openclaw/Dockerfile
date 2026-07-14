@@ -64,142 +64,14 @@ RUN cd /home/node/.openclaw/extensions && \
 # rejection, which crashes the process under Node.js v24's default
 # --unhandled-rejections=throw mode. This guard registers a global listener that
 # logs the rejection instead of letting it propagate.
-RUN cat > /home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/rejection-guard.js <<'GUARDEOF'
-// rejection-guard.js — Prevents ArmsTrace plugin async errors from crashing the gateway.
-// Registered via NODE_OPTIONS=--require so it loads before any plugin code.
-process.on('unhandledRejection', (reason, promise) => {
-  const msg = reason instanceof Error ? reason.stack : String(reason);
-  console.error(`[ArmsTrace][WARN] Swallowed unhandled rejection: ${msg}`);
-});
-GUARDEOF
+COPY agent-docker/openclaw/rejection-guard.js /home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/rejection-guard.js
 
 # ── 4c. Create toggle-observability.sh for hot-switching collection on/off ──
-RUN cat > /usr/local/bin/toggle-observability.sh <<'TOGGLEEOF'
-#!/bin/bash
-set -e
-ACTION=${1:-enable}
-CONFIG="/home/node/.openclaw/openclaw.json"
-PLUGIN_KEY="opentelemetry-instrumentation-openclaw"
-
-if [ ! -f "$CONFIG" ]; then
-  echo "[toggle] Config file not found: $CONFIG"
-  exit 1
-fi
-
-if [ "$ACTION" = "disable" ]; then
-  node -e "
-    const fs = require('fs');
-    const c = JSON.parse(fs.readFileSync('$CONFIG', 'utf8'));
-    if (c.plugins && c.plugins.entries && c.plugins.entries['$PLUGIN_KEY']) {
-      c.plugins.entries['$PLUGIN_KEY'].enabled = false;
-    }
-    fs.writeFileSync('$CONFIG', JSON.stringify(c, null, 2));
-  "
-  echo "[toggle] Plugin disabled"
-elif [ "$ACTION" = "enable" ]; then
-  node -e "
-    const fs = require('fs');
-    const c = JSON.parse(fs.readFileSync('$CONFIG', 'utf8'));
-    if (c.plugins && c.plugins.entries && c.plugins.entries['$PLUGIN_KEY']) {
-      c.plugins.entries['$PLUGIN_KEY'].enabled = true;
-    }
-    fs.writeFileSync('$CONFIG', JSON.stringify(c, null, 2));
-  "
-  echo "[toggle] Plugin enabled"
-else
-  echo "[toggle] Usage: toggle-observability.sh enable|disable"
-  exit 1
-fi
-
-# Restart the openclaw gateway process
-supervisorctl restart openclaw
-echo "[toggle] Process restarted"
-TOGGLEEOF
+COPY agent-docker/openclaw/toggle-observability.sh /usr/local/bin/toggle-observability.sh
 RUN chmod +x /usr/local/bin/toggle-observability.sh
 
 # ── 5. Write entrypoint.sh (generates openclaw.json on first boot, no-op on restart) ──
-RUN cat > /usr/local/bin/entrypoint.sh <<'ENTRYEOF'
-#!/bin/bash
-set -e
-
-CONFIG_FILE="${OPENCLAW_CONFIG_DIR:-/home/node/.openclaw/openclaw.json}"
-
-ENDPOINT="${ARMS_ENDPOINT}"
-LICENSE_KEY="${ARMS_LICENSE_KEY}"
-PROJECT="${ARMS_PROJECT}"
-WORKSPACE="${ARMS_WORKSPACE}"
-SERVICE_NAME="${SERVICE_NAME}"
-
-# All 5 parameters are required
-if [ -z "$ENDPOINT" ] || [ -z "$LICENSE_KEY" ] || [ -z "$PROJECT" ] || [ -z "$WORKSPACE" ] || [ -z "$SERVICE_NAME" ]; then
-    echo "[entrypoint] WARNING: Missing ARMS_* / SERVICE_NAME, skipping openclaw.json generation."
-    exec supervisord -n
-fi
-
-# FIRST BOOT only: generate openclaw.json from env vars
-# Platform writes the complete config on startup, replacing this initial file
-if [ ! -f "${CONFIG_FILE}" ]; then
-    cat > "${CONFIG_FILE}" <<JSONEOF
-{
-  "plugins": {
-    "allow": ["opentelemetry-instrumentation-openclaw", "diagnostics-otel"],
-    "load": { "paths": ["/home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw"] },
-    "entries": {
-      "opentelemetry-instrumentation-openclaw": {
-        "enabled": true,
-        "hooks": {
-          "allowConversationAccess": true
-        },
-        "config": {
-          "endpoint": "${ENDPOINT}",
-          "headers": {
-            "x-arms-license-key": "${LICENSE_KEY}",
-            "x-arms-project": "${PROJECT}",
-            "x-cms-workspace": "${WORKSPACE}"
-          },
-          "serviceName": "${SERVICE_NAME}",
-          "resourceAttributes": {
-            "acs.arms.service.feature": "genai_app"
-          }
-        }
-      }
-    }
-  },
-  "diagnostics": {
-    "enabled": true,
-    "otel": {
-      "enabled": true,
-      "protocol": "http/protobuf",
-      "endpoint": "${ENDPOINT}",
-      "headers": {
-        "x-arms-license-key": "${LICENSE_KEY}",
-        "x-arms-project": "${PROJECT}",
-        "x-cms-workspace": "${WORKSPACE}"
-      },
-      "serviceName": "${SERVICE_NAME}",
-      "metrics": true,
-      "traces": false,
-      "logs": false
-    }
-  }
-}
-JSONEOF
-
-    chown node:node "${CONFIG_FILE}" 2>/dev/null || true
-    echo "[entrypoint] Generated ${CONFIG_FILE} with SERVICE_NAME=${SERVICE_NAME}"
-fi
-
-# Inject rejection-guard so Node.js loads it before any plugin code.
-# This prevents unhandled promise rejections in the ArmsTrace plugin from
-# crashing the gateway process (Node.js v24 defaults to throw on unhandled).
-REJECTION_GUARD="/home/node/.openclaw/extensions/opentelemetry-instrumentation-openclaw/rejection-guard.js"
-if [ -f "${REJECTION_GUARD}" ]; then
-    export NODE_OPTIONS="--require ${REJECTION_GUARD} ${NODE_OPTIONS:-}"
-    echo "[entrypoint] NODE_OPTIONS=${NODE_OPTIONS}"
-fi
-
-exec supervisord -n
-ENTRYEOF
+COPY agent-docker/openclaw/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # ── 6. Fix ownership ──
