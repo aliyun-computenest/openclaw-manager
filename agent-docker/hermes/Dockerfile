@@ -1,4 +1,4 @@
-FROM compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/hermes-agent:v2026.5.16
+FROM nousresearch/hermes-agent:v2026.5.16
 
 # Switch to root to install plugins
 USER root
