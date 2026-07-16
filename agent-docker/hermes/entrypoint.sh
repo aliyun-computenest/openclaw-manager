@@ -46,4 +46,11 @@ if [ -f "$ARMS_LOAD" ]; then
 fi
 
 echo "[entrypoint] Python agent configured: service=${ARMS_APP_NAME}, endpoint=${ARMS_ENDPOINT}, py=${PY_VERSION}"
+
+# Fix ARMS agent log directory permissions for hermes subprocess
+chmod -R 777 /home/admin/.opt/.apsara-apm/python/logs/ 2>/dev/null || true
+
+# Fix config.yaml permissions for hermes user
+chmod 644 /opt/data/config.yaml 2>/dev/null || true
+
 exec supervisord -n
