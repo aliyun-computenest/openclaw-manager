@@ -11,19 +11,25 @@ SERVICE="${SERVICE_NAME:-qwenpaw}"
 PYTHON_PATH="/app/venv/bin/python"
 INSTALL_URL="https://arms-apm-cn-hangzhou-pre.oss-cn-hangzhou.aliyuncs.com/qwenpaw-cms-plugin/install.sh"
 
-# Install qwenpaw-cms-plugin (idempotent - checks if already installed)
-if ! $PYTHON_PATH -c "import loongsuite" 2>/dev/null; then
-    echo "[entrypoint] Installing qwenpaw-cms-plugin..."
-    curl -fsSL "$INSTALL_URL" | bash -s -- \
-        --python "$PYTHON_PATH" \
-        --skip-qwenpaw-check \
-        --site-bootstrap \
-        --x-arms-license-key "$ARMS_LICENSE_KEY" \
-        --x-arms-project "$ARMS_PROJECT" \
-        --x-cms-workspace "$ARMS_WORKSPACE" \
-        --serviceName "$SERVICE" \
-        --endpoint "${ARMS_ENDPOINT}" || \
-        echo "[entrypoint] WARNING: Plugin install failed, continuing without monitoring"
+# Write LoongSuite configuration for GenAI content capture (input/output).
+# install.sh normally does this, but we skip it when packages are pre-installed.
+# Generate config directly to avoid curl dependency on restricted networks.
+LOONGSUITE_CONFIG_DIR="/app/venv/lib/python3.11/site-packages/loongsuite_distro"
+LOONGSUITE_CONFIG="$LOONGSUITE_CONFIG_DIR/default_config.json"
+if [ ! -f "$LOONGSUITE_CONFIG" ]; then
+    echo "[entrypoint] Writing LoongSuite config..."
+    mkdir -p "$LOONGSUITE_CONFIG_DIR"
+    cat > "$LOONGSUITE_CONFIG" << EOFCFG
+{
+  "endpoint": "${ARMS_ENDPOINT}/v1/traces",
+  "metrics_endpoint": "${ARMS_ENDPOINT}/v1/metrics",
+  "protocol": "http/protobuf",
+  "headers": "x-arms-license-key=${ARMS_LICENSE_KEY},x-arms-project=${ARMS_PROJECT},x-cms-workspace=${ARMS_WORKSPACE}",
+  "service_name": "${SERVICE}",
+  "resource_attributes": "acs.arms.service.feature=genai_app,gen_ai.agent.system=qwenpaw"
+}
+EOFCFG
+    echo "[entrypoint] LoongSuite config written to $LOONGSUITE_CONFIG"
 fi
 
 # Check if observability is disabled via marker file
