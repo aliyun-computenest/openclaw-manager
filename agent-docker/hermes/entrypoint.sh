@@ -26,6 +26,15 @@ export PYTHONPATH="${AUTO_INSTR}:${SITE_PACKAGES}"
 # Set ARMS env for the Python agent
 export ARMS_APP_NAME="${SERVICE_NAME:-hermes}"
 
+# Persist PYTHONPATH and ARMS env to /etc/profile.d/ so that any terminal session
+# (e.g. agent-manager web terminal) automatically inherits them without manual setup.
+cat > /etc/profile.d/arms-observability.sh << EOF
+export PYTHONPATH="${PYTHONPATH}"
+export ARMS_APP_NAME="${ARMS_APP_NAME}"
+export APSARA_APM_APP_TYPE="${APSARA_APM_APP_TYPE:-app}"
+EOF
+chmod +r /etc/profile.d/arms-observability.sh
+
 # Kill any zombie hermes processes that started before patch
 pkill -f 'hermes gateway run' 2>/dev/null || true
 pkill -f 'hermes dashboard' 2>/dev/null || true
