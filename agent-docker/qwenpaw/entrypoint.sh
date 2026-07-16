@@ -35,6 +35,16 @@ fi
 # Enable site bootstrap for OpenTelemetry auto-instrumentation
 export LOONGSUITE_PYTHON_SITE_BOOTSTRAP=true
 
+# Configure OTEL exporter endpoint (required when loongsuite is pre-installed in image
+# and install.sh was skipped — otherwise defaults to localhost:4317 which fails)
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${ARMS_ENDPOINT}/v1/traces"
+export OTEL_EXPORTER_OTLP_METRICS_ENDPOINT="${ARMS_ENDPOINT}/v1/metrics"
+export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
+export OTEL_TRACES_EXPORTER="otlp"
+export OTEL_METRICS_EXPORTER="otlp"
+export OTEL_SERVICE_NAME="${SERVICE}"
+export OTEL_EXPORTER_OTLP_HEADERS="x-arms-license-key=${ARMS_LICENSE_KEY},x-arms-project=${ARMS_PROJECT},x-cms-workspace=${ARMS_WORKSPACE}"
+
 echo "[entrypoint] QwenPaw observability configured: service=${SERVICE}"
 # Hand off to QwenPaw's original entrypoint (generates supervisord.conf from template + starts supervisord)
 exec /entrypoint.sh
