@@ -53,6 +53,14 @@ RUN chmod +x /usr/local/bin/run-cmd.sh
 #   不覆盖 ENTRYPOINT/CMD，由平台 startup_command (run-cmd.sh modify-model) 在实例
 #   创建后完成 seed + 写入 + supervisorctl restart app，qwenpaw 重启后加载完整 providers。
 
+# ── Pre-install loongsuite observability packages (offline-ready) ──
+# 计算巢运行环境可能无公网出口，必须在构建阶段预装，不依赖运行时 pip install。
+RUN /app/venv/bin/pip install --no-cache \
+    loongsuite-site-bootstrap \
+    loongsuite-distro \
+    loongsuite-instrumentation-qwenpaw \
+    loongsuite-instrumentation-agentscope
+
 # ── Create toggle-observability.sh for hot-switching collection on/off ──
 COPY agent-docker/qwenpaw/toggle-observability.sh /usr/local/bin/toggle-observability.sh
 RUN chmod +x /usr/local/bin/toggle-observability.sh
