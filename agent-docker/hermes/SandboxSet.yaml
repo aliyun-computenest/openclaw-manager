@@ -43,7 +43,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: agent-manager-hermes
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-hermes-test:v2026.7.16.1953
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-hermes-test:v2026.7.16.2028
           imagePullPolicy: IfNotPresent
           command: ["/usr/local/bin/entrypoint.sh"]
           ports:
