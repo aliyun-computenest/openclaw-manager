@@ -26,14 +26,20 @@ export PYTHONPATH="${AUTO_INSTR}:${SITE_PACKAGES}"
 # Set ARMS env for the Python agent
 export ARMS_APP_NAME="${SERVICE_NAME:-hermes}"
 
-# Persist PYTHONPATH and ARMS env to /etc/profile.d/ so that any terminal session
-# (e.g. agent-manager web terminal) automatically inherits them without manual setup.
-cat > /etc/profile.d/arms-observability.sh << EOF
+# Persist PYTHONPATH and ARMS env so that ANY terminal session inherits them:
+# - /etc/profile.d/ → login shells (bash -l)
+# - /etc/bash.bashrc → non-login interactive shells (kubectl exec, ACK console)
+# - /etc/environment → PAM-level (some SSH/container runtimes)
+_ARMS_ENV_SCRIPT="/etc/profile.d/arms-observability.sh"
+cat > "$_ARMS_ENV_SCRIPT" << EOF
 export PYTHONPATH="${PYTHONPATH}"
 export ARMS_APP_NAME="${ARMS_APP_NAME}"
 export APSARA_APM_APP_TYPE="${APSARA_APM_APP_TYPE:-app}"
 EOF
-chmod +r /etc/profile.d/arms-observability.sh
+chmod +r "$_ARMS_ENV_SCRIPT"
+# Also source from bashrc for non-login shells (e.g. kubectl exec -it -- bash)
+grep -q "arms-observability.sh" /etc/bash.bashrc 2>/dev/null || \
+    echo ". $_ARMS_ENV_SCRIPT" >> /etc/bash.bashrc 2>/dev/null || true
 
 # Kill any zombie hermes processes that started before patch
 pkill -f 'hermes gateway run' 2>/dev/null || true
