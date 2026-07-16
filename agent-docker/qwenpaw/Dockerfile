@@ -1,5 +1,7 @@
 FROM agentscope-registry.ap-southeast-1.cr.aliyuncs.com/agentscope/qwenpaw:latest
 
+ARG COMPUTENEST_CLI_VERSION=1.9.16
+
 # Switch to root for any customization
 USER root
 
@@ -13,6 +15,12 @@ USER root
 RUN apt-get update && \
     apt-get install -y supervisor tini procps psmisc lsof && \
     rm -rf /var/cache/apt/*
+
+RUN UV_PYTHON_DOWNLOADS=never uv venv --python python3 /opt/agent-manager/computenest-venv && \
+    uv pip install --python /opt/agent-manager/computenest-venv/bin/python --no-cache \
+      "computenest-cli==${COMPUTENEST_CLI_VERSION}"
+
+RUN su -s /bin/sh node -c 'HOME=/home/node /opt/agent-manager/computenest-venv/bin/computenest-cli skillhub install --help >/dev/null'
 
 # Ensure qwenpaw data directories exist (will be overlaid by emptyDir volumes at runtime)
 RUN mkdir -p /app/working /app/working.secret /app/working.secret/providers/custom /app/working.backups
