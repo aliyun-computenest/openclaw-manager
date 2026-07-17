@@ -43,10 +43,9 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: agent-manager-qwenpaw
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/aliyun-computenest/agent-manager-qwenpaw-test:v0.0.1
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/agent-manager-qwenpaw-test:2026.7.16.2128
           imagePullPolicy: IfNotPresent
-          # 不指定 command/args，沿用镜像原生 ENTRYPOINT(docker-entrypoint.sh) + CMD(/entrypoint.sh)，
-          # 由 qwenpaw 内部 supervisord 启动 dbus/xvfb/xfce4/app 等子进程。
+          command: ["/usr/local/bin/entrypoint.sh"]
           ports:
             - name: qwenpaw
               containerPort: 8088
@@ -57,6 +56,11 @@ spec:
           env:
             - name: ENVD_DIR
               value: /mnt/envd
+            # Pod name for ARMS service identification (Downward API)
+            - name: SERVICE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
             # 强制 UTF-8 locale，避免 Python 默认用 ASCII 编码读写 I/O。
             # 历史问题：qwenpaw 镜像 LANG 为空 → api_key 转成 \ufffd → httpx
             # 编 Authorization header 在 ASCII 下抛 UnicodeEncodeError。

@@ -1,5 +1,7 @@
 FROM agentscope-registry.ap-southeast-1.cr.aliyuncs.com/agentscope/qwenpaw:latest
 
+ARG COMPUTENEST_CLI_VERSION=1.9.16
+
 # Switch to root for any customization
 USER root
 
@@ -13,6 +15,12 @@ USER root
 RUN apt-get update && \
     apt-get install -y supervisor tini procps psmisc lsof && \
     rm -rf /var/cache/apt/*
+
+RUN UV_PYTHON_DOWNLOADS=never uv venv --python python3 /opt/agent-manager/computenest-venv && \
+    uv pip install --python /opt/agent-manager/computenest-venv/bin/python --no-cache \
+      "computenest-cli==${COMPUTENEST_CLI_VERSION}"
+
+RUN su -s /bin/sh node -c 'HOME=/home/node /opt/agent-manager/computenest-venv/bin/computenest-cli skillhub install --help >/dev/null'
 
 # Ensure qwenpaw data directories exist (will be overlaid by emptyDir volumes at runtime)
 RUN mkdir -p /app/working /app/working.secret /app/working.secret/providers/custom /app/working.backups
@@ -52,3 +60,24 @@ RUN chmod +x /usr/local/bin/run-cmd.sh
 #     3. exec 镜像自带 supervisord，启动 dbus / xvfb / xfce4 / app 四个进程
 #   不覆盖 ENTRYPOINT/CMD，由平台 startup_command (run-cmd.sh modify-model) 在实例
 #   创建后完成 seed + 写入 + supervisorctl restart app，qwenpaw 重启后加载完整 providers。
+
+# ── Pre-install loongsuite observability packages (offline-ready) ──
+# 计算巢运行环境可能无公网出口，必须在构建阶段预装，不依赖运行时 pip install。
+RUN /app/venv/bin/pip install --no-cache \
+    loongsuite-site-bootstrap \
+    loongsuite-distro \
+    loongsuite-instrumentation-qwenpaw \
+    loongsuite-instrumentation-agentscope
+
+# ── Create toggle-observability.sh for hot-switching collection on/off ──
+COPY agent-docker/qwenpaw/toggle-observability.sh /usr/local/bin/toggle-observability.sh
+RUN chmod +x /usr/local/bin/toggle-observability.sh
+
+# ── Write entrypoint.sh (ARMS observability + graceful degradation) ──
+# QwenPaw uses the official qwenpaw-cms-plugin for CMS 2.0 integration.
+# ARMS connection parameters are injected at runtime via SandboxSet env vars.
+# If not set, the entrypoint starts QwenPaw without monitoring (graceful degradation).
+COPY agent-docker/qwenpaw/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
