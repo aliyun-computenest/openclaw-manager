@@ -1,14 +1,19 @@
-FROM nousresearch/hermes-agent:v2026.5.16
+FROM nousresearch/hermes-agent:v2026.5.16@sha256:b6e41c155d6bfce5ad83c5d0fec670086db8a43250e4511c9474134be5482d33
 
-# Switch to root to install plugins
+ARG COMPUTENEST_CLI_VERSION=1.9.16
+
 USER root
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      supervisor tini python3 python3-yaml curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install supervisor, tini and python3-yaml (required by run-cmd.sh for
-# safely editing config.yaml without overwriting user customizations)
-RUN apt update && \
-    apt install -y supervisor tini python3 python3-yaml curl ca-certificates && \
-    rm -rf /var/cache/apt/*
+RUN UV_PYTHON_DOWNLOADS=never /usr/local/bin/uv venv --python python3 /opt/agent-manager/computenest-venv && \
+    /usr/local/bin/uv pip install --python /opt/agent-manager/computenest-venv/bin/python --no-cache \
+      "computenest-cli==${COMPUTENEST_CLI_VERSION}"
+
+RUN su -s /bin/sh hermes -c 'HOME=/opt/data /opt/agent-manager/computenest-venv/bin/computenest-cli skillhub install --help >/dev/null'
 
 # Pre-install messaging platform dependencies (DingTalk + Feishu) into hermes venv.
 # hermes v0.14.0 lazy_deps installs SDKs on first use, but _IncomingHandler's base
@@ -73,4 +78,3 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ENV TIRITH_ENABLED=false
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-

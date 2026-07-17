@@ -1,12 +1,18 @@
 FROM ghcr.io/openclaw/openclaw:2026.5.19
 
+ARG COMPUTENEST_CLI_VERSION=1.9.16
+
 # Switch to root to install plugins
 USER root
 
 # ── 1. Install supervisor + tini ──
 RUN apt update && \
-    apt install -y supervisor tini && \
+    apt install -y supervisor tini python3-venv && \
+    python3 -m venv /opt/agent-manager/computenest-venv && \
+    /opt/agent-manager/computenest-venv/bin/python -m pip install --disable-pip-version-check --no-cache-dir "computenest-cli==${COMPUTENEST_CLI_VERSION}" && \
     rm -rf /var/cache/apt/*
+
+RUN su -s /bin/sh node -c 'HOME=/home/node /opt/agent-manager/computenest-venv/bin/computenest-cli skillhub install --help >/dev/null'
 
 # Copy run-cmd.sh for config modification
 COPY agent-docker/openclaw/run-cmd.sh /usr/local/bin/run-cmd.sh
