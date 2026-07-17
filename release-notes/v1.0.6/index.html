@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>v1.0.6 - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../../search/main.js"></script>
+  
+
+  
+
+  <script src="../../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#v106">v1.0.6</a></li>
+              
+                  <li><a href="#_1">新增功能</a></li>
+                  
+                      <li class="li-h3"><a href="#ai-apm">AI 应用可观测性（APM）</a></li>
+                  
+                      <li class="li-h3"><a href="#_2">应用监控诊断</a></li>
+                  
+              
+                  <li><a href="#_3">升级步骤</a></li>
+                  
+              
+                  <li><a href="#_4">注意事项</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="v106">v1.0.6</h1>
+<ul>
+<li><strong>发布日期</strong>：2026-07-17</li>
+</ul>
+<h2 id="_1">新增功能</h2>
+<h3 id="ai-apm">AI 应用可观测性（APM）</h3>
+<ul>
+<li>新增 <strong>AI 应用监控</strong>能力，支持三类 Agent（OpenClaw / Hermes / QwenPaw）接入阿里云 ARMS APM。</li>
+<li><strong>新建即用</strong>：新建 Agent 实例后发起对话，监控数据自动上报，无需手动安装探针或配置参数。</li>
+<li><strong>应用监控面板</strong>：管理员可在「应用监控」页面查看每个实例的调用链路、对话分析、Token 消耗、模型调用耗时等指标（通过 CMS iframe 免登嵌入）。</li>
+<li><strong>采集开关</strong>：管理员可在 Agent Type 配置页一键开启/关闭监控采集，切换后秒级生效，无需重建实例。</li>
+<li><strong>自动参数初始化</strong>：服务首次部署时自动从 CMS API 获取 ARMS 接入参数并写入配置，管理员无需手动填写。</li>
+</ul>
+<h3 id="_2">应用监控诊断</h3>
+<ul>
+<li>应用监控页面提供实例级状态诊断：自动检测参数配置、采集开关、探针安装、实体注册等环节，并给出针对性引导提示。</li>
+<li>采集关闭时展示提示页面，支持一键跳转至 Agent Type 配置页开启采集。</li>
+</ul>
+<h2 id="_3">升级步骤</h2>
+<p>请参考 <a href="../#通用升级方式">Release Notes 通用升级方式</a>：在<strong>计算巢控制台</strong>对服务实例执行<strong>升级</strong>操作即可，数据库迁移会随升级流程自动完成。</p>
+<h2 id="_4">注意事项</h2>
+<ul>
+<li><strong>xtrace 写入通道</strong>：升级后需在阿里云云监控 2.0 控制台确认对应工作空间的 trace 写入通道已开启，否则监控数据无法上报。</li>
+<li><strong>老实例接入</strong>：已运行的老实例需通过「实例升级」功能更新镜像后方可接入应用监控；新建实例无需任何额外操作。</li>
+<li><strong>采集开关默认状态</strong>：升级后内置 Agent Type 的采集开关默认为<strong>关闭</strong>，管理员需手动开启后新建实例才会上报监控数据。</li>
+<li><strong>QwenPaw 已知限制</strong>：QwenPaw 的链路追踪中「输入/输出」内容展示依赖 LoongSuite 插件版本，当前 0.7.0 版本存在 ContextVar 兼容性问题，待 LoongSuite 团队后续修复。</li>
+</ul>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2026-07-17 02:57:20.418041+00:00
+  -->
+</body>
+</html>

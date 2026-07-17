@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>镜像预装可观测插件 — 完整流程 - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#_1">镜像预装可观测插件 — 完整流程</a></li>
+              
+                  <li><a href="#1">阶段 1：镜像构建</a></li>
+                  
+              
+                  <li><a href="#2-sandboxset">阶段 2：平台部署 SandboxSet</a></li>
+                  
+              
+                  <li><a href="#3-pod">阶段 3：用户创建实例 → Pod 启动</a></li>
+                  
+              
+                  <li><a href="#4entrypointsh">阶段 4：entrypoint.sh 执行</a></li>
+                  
+              
+                  <li><a href="#5openclaw">阶段 5：OpenClaw 网关启动</a></li>
+                  
+              
+                  <li><a href="#6">阶段 6：平台写入完整配置</a></li>
+                  
+              
+                  <li><a href="#7">阶段 7：容器重启</a></li>
+                  
+              
+                  <li><a href="#_2">一图总结</a></li>
+                  
+              
+                  <li><a href="#_3">与原流程对比</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="_1">镜像预装可观测插件 — 完整流程</h1>
+<blockquote>
+<p>分支：<code>feat/observability-plugin</code>
+方案详情：<a href="specs/observability-plugin-preinstall.md">specs/observability-plugin-preinstall.md</a></p>
+</blockquote>
+<hr />
+<h2 id="1">阶段 1：镜像构建</h2>
+<pre><code>Dockerfile（本仓库 agent-docker/openclaw/Dockerfile）
+  │
+  ├─ FROM 基础镜像 (openclaw:2026.3.23-2)
+  ├─ apt install supervisor + tini
+  ├─ 写入 supervisord.conf（内联 heredoc）
+  ├─ npm pack 频道插件（企微/QQ/飞书/钉钉）→ 解压 → npm install
+  ├─ npm pack openclaw-cms-plugin@0.1.2 → 解压 → npm install
+  │   └─ cd diagnostics-otel/ → npm install
+  ├─ 写入 /usr/local/bin/entrypoint.sh（内联 heredoc）
+  ├─ chown node:node
+  └─ ENTRYPOINT = /usr/local/bin/entrypoint.sh
+</code></pre>
+<p><strong>产出</strong>：一个通用镜像，含频道插件 + ARMS 插件 + entrypoint.sh。镜像里<strong>没有</strong> ARMS 参数，<strong>没有</strong> openclaw.json。</p>
+<hr />
+<h2 id="2-sandboxset">阶段 2：平台部署 SandboxSet</h2>
+<pre><code>openclaw-platform 部署时
+  │
+  └─ buildSandboxSet()
+       ├─ 读取 SandboxSet.yaml 模板
+       ├─ 调用 getApmInstallParameters() 获取 ARMS 参数
+       │    → endpoint, licenseKey, project, workspace
+       ├─ 把参数填入 env 段
+       │    ARMS_ENDPOINT   = &quot;https://xxx/apm/trace/opentelemetry&quot;
+       │    ARMS_LICENSE_KEY = &quot;lic-abc&quot;
+       │    ARMS_PROJECT     = &quot;proj-1&quot;
+       │    ARMS_WORKSPACE   = &quot;ws-1&quot;
+       └─ 写入 K8s（创建 SandboxSet 资源）
+</code></pre>
+<p>此时 K8s 中有一个 SandboxSet 模板，<code>command</code> 指向 entrypoint.sh，<code>env</code> 中 5 个变量已就绪（SERVICE_NAME 由 Downward API 自动填）。</p>
+<hr />
+<h2 id="3-pod">阶段 3：用户创建实例 → Pod 启动</h2>
+<pre><code>用户点击&quot;创建&quot;
+  │
+  └─ instance-provisioner.js
+       ├─ 创建实例记录
+       ├─ ~~installArmsPluginBackground()~~   ← 已注释掉
+       └─ Sandbox.create() → K8s 按模板创建 Pod
+
+K8s 创建 Pod
+  │
+  ├─ Downward API 注入 SERVICE_NAME = metadata.name（如 &quot;pod-7f8g9h&quot;）
+  ├─ 容器环境变量就绪：
+  │    ARMS_ENDPOINT   = &quot;https://xxx/apm/trace/opentelemetry&quot;
+  │    ARMS_LICENSE_KEY = &quot;lic-abc&quot;
+  │    ARMS_PROJECT     = &quot;proj-1&quot;
+  │    ARMS_WORKSPACE   = &quot;ws-1&quot;
+  │    SERVICE_NAME     = &quot;pod-7f8g9h&quot;
+  │
+  └─ 容器运行时拉起进程：/usr/local/bin/entrypoint.sh
+</code></pre>
+<hr />
+<h2 id="4entrypointsh">阶段 4：entrypoint.sh 执行</h2>
+<pre><code class="language-bash">#!/bin/bash
+# 5 个 env 变量已在进程环境中，无需 fetch
+
+# ① 校验：任一缺失则跳过，网关照样启动（无 ARMS 监控）
+if [ -z &quot;$ARMS_ENDPOINT&quot; ] || ... ; then
+    echo WARNING → exec supervisord -n
+fi
+
+# ② 首次启动：openclaw.json 不存在
+if [ ! -f &quot;/home/node/.openclaw/openclaw.json&quot; ]; then
+    # 从 env 生成 openclaw.json
+    #   ├─ plugins.entries.openclaw-cms-plugin.config → endpoint/headers/serviceName
+    #   └─ diagnostics.otel → endpoint/headers/serviceName
+    heredoc &gt; openclaw.json
+    chown node:node
+fi
+
+# ③ 替换当前进程为 supervisord（保持 PID 1）
+exec supervisord -n
+</code></pre>
+<hr />
+<h2 id="5openclaw">阶段 5：OpenClaw 网关启动</h2>
+<pre><code>supervisord（PID 1）
+  │
+  └─ [program:openclaw]
+       command=openclaw gateway run --allow-unconfigured
+       ↓
+       网关读取 openclaw.json
+       ↓
+       加载 openclaw-cms-plugin + diagnostics-otel
+       ↓
+       开始向 ARMS 上报指标（serviceName=pod-7f8g9h）
+       ↓
+       用户发起对话，正常使用
+</code></pre>
+<hr />
+<h2 id="6">阶段 6：平台写入完整配置</h2>
+<pre><code>平台检测到网关就绪
+  │
+  └─ 用 admin 模板覆盖 openclaw.json
+       （含模型配置、渠道配置、ARMS 配置段）
+       ↓
+       openclaw.json：初版 ARMS-only → 完整版
+</code></pre>
+<hr />
+<h2 id="7">阶段 7：容器重启</h2>
+<pre><code>Pod 重启（Pod 名称不变，&quot;pod-7f8g9h&quot;）
+  │
+  └─ entrypoint.sh 再次执行
+       ├─ 检查 openclaw.json → 已存在
+       └─ 跳过，直接 exec supervisord -n
+            ↓
+            网关用平台写入的完整配置直接启动
+</code></pre>
+<hr />
+<h2 id="_2">一图总结</h2>
+<pre><code>镜像构建            平台部署              用户创建实例          Pod 启动             网关运行
+   │                  │                    │                    │                    │
+   ▼                  ▼                    ▼                    ▼                    ▼
+┌──────┐         ┌──────────┐         ┌──────────┐         ┌──────────┐         ┌──────────┐
+│Docker │  ──→   │SandboxSet│  ──→    │创建 Pod  │  ──→    │entrypoint│  ──→    │openclaw  │
+│build  │        │注入 ARMS │         │env 注入  │         │.sh 生成  │         │gateway   │
+│插件+脚本│       │env 到模板│         │SERVICE   │         │JSON      │         │读取JSON  │
+│零参数  │        │          │         │_NAME     │         │→supervisord│       │上报ARMS  │
+└──────┘         └──────────┘         └──────────┘         └──────────┘         └──────────┘
+                                                                                     │
+                                                                         平台写 admin 模板覆盖
+</code></pre>
+<hr />
+<h2 id="_3">与原流程对比</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>原流程（无可观测）</th>
+<th>新流程（预装可观测）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>镜像内容</td>
+<td>基础 + supervisor + 频道插件</td>
+<td>+ ARMS 插件 + entrypoint.sh</td>
+</tr>
+<tr>
+<td>ENTRYPOINT</td>
+<td><code>supervisord -n</code></td>
+<td><code>entrypoint.sh</code></td>
+</tr>
+<tr>
+<td>容器启动</td>
+<td>网关直接跑</td>
+<td>entrypoint.sh 生成 JSON → 网关跑</td>
+</tr>
+<tr>
+<td>实例创建</td>
+<td>正常</td>
+<td>跳过 installArmsPluginBackground</td>
+</tr>
+<tr>
+<td>重启</td>
+<td>网关重启</td>
+<td>entrypoint.sh 跳过，网关直接重启</td>
+</tr>
+</tbody>
+</table>
+<p><strong>核心变化</strong>：镜像多了一个插件和一个 70 行脚本，Pod 启动时多花 &lt;1 秒生成一份 JSON。其余完全不变。</p>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2026-07-17 02:57:20.385469+00:00
+  -->
+</body>
+</html>
