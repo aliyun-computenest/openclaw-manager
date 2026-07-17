@@ -39,7 +39,7 @@ spec:
       containers:
         - name: agent-manager-openclaw
           # image 会在创建时被动态覆盖
-          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:2026.7.14
+          image: compute-nest-registry.cn-hangzhou.cr.aliyuncs.com/computenest/openclaw-manager-openclaw-test:2026.7.16
           securityContext:
             readOnlyRootFilesystem: false
             runAsUser: 0
